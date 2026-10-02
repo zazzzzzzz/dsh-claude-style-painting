@@ -1,0 +1,35 @@
+/* ---------- Third-party repair: dsh-agy-link run_code fallback card ---------- */
+/* The agy-link bridge replaces the host run_code tool card with its own keyed
+   toolview; its non-mirror fallback ships an unstyled header (two bare spans,
+   not even a gap) and a bare pre. Give the header the tool-row rhythm, the
+   tool name the skin's technical-meta mono voice (overriding the editorial
+   serif the `[class*="title"]` rule lends it), the variant label a real
+   pill, and the code preview card padding. */
+body[data-dsh-claude-style] .agy-tv-header {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  min-height: 24px;
+}
+body[data-dsh-claude-style] .agy-tv-title {
+  font-family: var(--dsw-font-code);
+  font-weight: 500;
+  font-size: 12px;
+  letter-spacing: 0;
+  line-height: 24px;
+  color: var(--dsw-alias-label-secondary);
+}
+body[data-dsh-claude-style] .agy-tv-badge {
+  font-family: var(--dsw-font-code);
+  font-size: 11px;
+  line-height: 16px;
+  padding: 0 6px;
+  border-radius: 9999px;
+  background: var(--dsw-alias-interactive-bg-hover);
+  color: var(--dsw-alias-label-tertiary);
+}
+body[data-dsh-claude-style] .agy-tv-pre {
+  padding: 10px 12px;
+  overflow-x: auto;
+}
+

@@ -1,0 +1,47 @@
+/* ---------- Claude Code layout: hero brand mark ---------- */
+/* The new-conversation hero ships the DeepSeek fish; swap it for the selected
+   brand mark. Every child of the hitbox is hidden — the mark can sit behind a
+   slot wrapper, not always a bare svg — and the mark is painted on the hitbox,
+   so React keeps owning its own node. The hero keeps the clay fill in both
+   brands, matching the shipped accent treatment. */
+body[data-dsh-claude-style]%%BRAND_ACTIVE%% [class*="fishHitbox"] > * {
+  display: none !important;
+}
+
+body[data-dsh-claude-style]%%BRAND_ACTIVE%% [class*="fishHitbox"] svg {
+  display: none !important;
+}
+
+body[data-dsh-claude-style]%%BRAND_ACTIVE%% [class*="fishHitbox"]::before {
+  content: "";
+  flex: none;
+  width: 42.5px;
+  height: 42.5px;
+  background-repeat: no-repeat;
+  background-position: center;
+  background-size: contain;
+}
+
+body[data-dsh-claude-style][%%BRAND_ATTR%%="%%BRAND_CLAUDE%%"] [class*="fishHitbox"]::before {
+  background-image: %%CLAUDE_MARK_CLAY%%;
+}
+
+/* The DeepSeek brand keeps the host's own fish, and paints it in DeepSeek's
+   brand blue (the host inks it with the headline's primary label). */
+body[data-dsh-claude-style][%%BRAND_ATTR%%="%%BRAND_DEEPSEEK%%"] [class*="fishHitbox"] svg {
+  color: var(--dsh-claude-logo-ink);
+}
+
+/* The preview badge has no Claude Code counterpart. */
+body[data-dsh-claude-style] [class*="previewBadge"] {
+  display: none !important;
+}
+
+/* Headline: the shipped 26px/32px editorial display, then 15% back off that
+   (52 -> 44.2) and one weight step below the display rule. */
+body[data-dsh-claude-style] [class*="headline"]:has([class*="fishHitbox"]) {
+  font-size: 44.2px;
+  line-height: 54.4px;
+  font-weight: 400;
+}
+

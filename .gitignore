@@ -1,0 +1,6 @@
+node_modules/
+*.log
+.DS_Store
+
+# Local debugging scratch (Chrome profile, CDP scripts, screenshots)
+.debug/

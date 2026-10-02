@@ -1,0 +1,244 @@
+/* @composer-gate */
+/* Model trigger in trailing */
+body[data-dsh-claude-style] [data-composer-card][data-composer-variant="inline"] [class*="_trailing"] > :first-child,
+body[data-dsh-claude-style] [data-composer-card][data-composer-variant="inline"] [class*="_trailing"] :is([class*="trigger" i], [class*="model" i], [class*="Model"]) {
+  display: inline-flex !important;
+  align-items: center !important;
+  font-size: 13px !important;
+  color: var(--dsw-alias-label-secondary) !important;
+  border-radius: 7px !important;
+  cursor: pointer !important;
+  visibility: visible !important;
+  opacity: 1 !important;
+}
+/* The skin's own model trigger replaces the host's model seat (the host's
+   root is marked and hidden by syncModelControl). One button, one hover
+   background — the shipped seat stacks an icon + label + effort + chevron,
+   each with its own surface. */
+body[data-dsh-claude-style] [data-dsh-claude-model-host] {
+  display: none !important;
+}
+body[data-dsh-claude-style] [class*="_trailing"] .dsh-claude-model-btn {
+  display: inline-flex !important;
+  align-items: center !important;
+  gap: 2px !important;
+  height: 28px !important;
+  max-width: 280px !important;
+  padding: 0 8px !important;
+  border: none !important;
+  border-radius: 7px !important;
+  background: transparent !important;
+  color: var(--dsw-alias-label-secondary) !important;
+  font-size: 13px !important;
+  font-weight: 500 !important;
+  line-height: 20px !important;
+  cursor: pointer !important;
+  box-sizing: border-box !important;
+  min-width: 0 !important;
+}
+body[data-dsh-claude-style] [class*="_trailing"] .dsh-claude-model-btn-label.dsh-claude-model-btn-loading {
+  color: var(--dsw-alias-label-caption, #a6a094) !important;
+}
+body[data-dsh-claude-style] [class*="_trailing"] .dsh-claude-model-btn:hover {
+  background: var(--dsh-claude-hover-bg, rgba(0, 0, 0, 0.08)) !important;
+  color: var(--dsw-alias-label-primary) !important;
+}
+
+/* Only the whole trigger gets the hover plate; its label/effort spans stay
+   transparent so no smaller inner background appears. */
+body[data-dsh-claude-style] [class*="_trailing"] .dsh-claude-model-btn > * {
+  background: transparent !important;
+}
+body[data-dsh-claude-style] [class*="_trailing"] .dsh-claude-model-btn-label {
+  text-overflow: ellipsis !important;
+  white-space: nowrap !important;
+  min-width: 0 !important;
+  overflow: hidden !important;
+}
+/* (The effort trigger's styles live in features/effort/effort-picker.css: the
+   trigger is body-mounted and JS-pinned beside the model trigger — it never
+   sits under [class*="_trailing"], so the rules drafted for that seat were dead
+   and have been removed.) */
+
+/* The host's dock line — the context meter and (hidden, see below) the stats
+   pills — laid over the toolbar row. Both stay in their native React parent
+   (moving them out crashed React's unmount with Node.removeChild), so the dock
+   itself leaves the flow for the row's line, with the meter at the row's right
+   end. The dock is the card's next sibling; the queue, todo and goal overlays
+   above the card name their roots `dock` too and keep the host's own
+   placement. The 4px is the inset the card leaves under itself inside the
+   stack: the dock's 28px line is then exactly the control row's line. */
+body[data-dsh-claude-style] [class*="_composerStack"]:not([data-composer-variant="hero"]) {
+  position: relative !important;
+}
+body[data-dsh-claude-style] [class*="_composerStack"]:not([data-composer-variant="hero"]) [data-composer-card] + [class*="_dock"] {
+  position: absolute !important;
+  bottom: 4px !important;
+  left: var(--dsh-composer-side-clearance, 0px) !important;
+  right: var(--dsh-composer-side-clearance, 0px) !important;
+  height: 28px !important;
+  margin: 0 auto !important;
+  padding: 0 calc(160px + var(--dsh-claude-meter-room, 0px)) 0 140px !important;
+  display: flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  gap: 12px !important;
+  pointer-events: none !important;
+  z-index: 3 !important;
+  max-width: var(--dsh-composer-card-max-width, 100%) !important;
+  box-sizing: border-box !important;
+}
+body[data-dsh-claude-style] [class*="_composerStack"]:not([data-composer-variant="hero"]) [data-composer-card] + [class*="_dock"] > * {
+  pointer-events: auto !important;
+}
+/* The meter holds the row's right end, inside the row's own 4px inset, after
+   the model and effort triggers: the trailing cluster keeps that room free
+   (--dsh-claude-meter-room, measured by the permissions pass). Centred by
+   stretching over the dock's height, never by a transform — the meter's panel
+   is position: fixed, and a transform here would anchor it to the meter. */
+body[data-dsh-claude-style] [class*="_composerStack"]:not([data-composer-variant="hero"]) [data-composer-card] + [class*="_dock"] > [data-dsh-claude-context-meter] {
+  position: absolute !important;
+  top: 0 !important;
+  bottom: 0 !important;
+  right: 4px !important;
+  align-items: center !important;
+}
+body[data-dsh-claude-style] [class*="_composerStack"]:not([data-composer-variant="hero"]) [data-composer-card] [class*="_row"] > [class*="_trailing"] {
+  margin-right: var(--dsh-claude-meter-room, 0px) !important;
+}
+
+/* ---------- the host's stats row: hidden, its detail moved into the context popover ---------- */
+/* The host ships two pills here (turns and steps · tok/s, total tokens · cache
+   hits) with its own icons and spacing, and the skin used to fold them into one
+   sentence. That sentence is gone and the row is HIDDEN — not removed: the two
+   pills are the read's own click targets, and their detail dialogs are read out
+   of them (features/permissions/session-stats.js) into the popover the context
+   meter opens. One popover for everything about the session's numbers, and the
+   input row keeps only the meter at its right end. */
+body[data-dsh-claude-style] [data-composer-stats] {
+  display: none !important;
+}
+
+/* ---------- one type for the composer's bottom line ---------- */
+/* The ring, the model trigger and the hidden stats row are three host widgets
+   that each brought their own type: the trigger 13px/500 in the secondary
+   tone, the stats 12px/400 tertiary, the ring the host's secondary content
+   size. They share one line now, so they read as one family — same face, same
+   size, same weight, same tone. The ring's trigger is targeted explicitly
+   because the host sets its own colour and size on that button. */
+body[data-dsh-claude-style] [data-dsh-claude-context-meter],
+body[data-dsh-claude-style] [data-dsh-claude-context-meter] button,
+body[data-dsh-claude-style] [class*="_composerStack"] [data-composer-stats],
+body[data-dsh-claude-style] [data-composer-card] [class*="_row"] .dsh-claude-model-btn {
+  font-family: var(--dsw-font-family) !important;
+  font-size: 13px !important;
+  font-weight: 500 !important;
+  line-height: 20px !important;
+  letter-spacing: normal !important;
+  color: var(--dsw-alias-label-secondary) !important;
+}
+
+/* The host renders two separate stat dialogs; hide them — their rows are read
+   into the context popover instead — for as long as the permission control,
+   which owns that read, is installed. */
+body[data-dsh-claude-style][%%PERMISSIONS_ATTR%%] [role="dialog"]:has([data-session-stats-details]),
+body[data-dsh-claude-style][%%PERMISSIONS_ATTR%%] [role="dialog"]:has([data-session-stats-usage]) {
+  display: none !important;
+}
+
+/* ---------- session statistics inside the context popover ---------- */
+/* Skin-owned nodes appended to the host's own panel
+   (features/permissions/session-stats.js): the host's context rows above, the
+   session's numbers below, one hairline between them.
+
+   The panel itself is the host's, and the host mounts it with no entrance of
+   its own — it used to pop while every card the skin builds faded in. The
+   feature stamps the panel, and it takes the cards' own short rise (the shared
+   keyframe), so hovering either control opens the same way. */
+body[data-dsh-claude-style] [data-dsh-claude-context-panel] {
+  animation: dsh-claude-popover-in 0.15s ease !important;
+}
+/* The host places the panel from the anchor's LEFT edge and only then clamps it
+   into the viewport, which at the end of the composer row parks it against the
+   window's right margin, past the ring. session-stats.js reads the two boxes and
+   writes the left value that lines the panel's right edge up with the meter's —
+   the hand-over the hero menu makes for the menu the host places below its own
+   trigger. The mark is written together with the value, so this declaration
+   never runs on a reading that has gone. */
+body[data-dsh-claude-style] [data-dsh-claude-context-panel][data-dsh-claude-context-aligned] {
+  left: var(--dsh-claude-context-panel-left) !important;
+}
+body[data-dsh-claude-style] .dsh-claude-context-stats {
+  display: flex !important;
+  flex-direction: column !important;
+  gap: 10px !important;
+  margin-top: 10px !important;
+  padding-top: 10px !important;
+  border-top: 1px solid var(--dsw-alias-border-l1) !important;
+  min-width: 0 !important;
+  font-family: var(--dsw-font-family) !important;
+}
+body[data-dsh-claude-style] .dsh-claude-context-stats-grid {
+  display: grid !important;
+  grid-template-columns: 1fr 1fr !important;
+  gap: 6px 10px !important;
+  min-width: 0 !important;
+}
+body[data-dsh-claude-style] .dsh-claude-context-stats-section {
+  color: var(--dsw-alias-label-tertiary) !important;
+  font-size: 11px !important;
+  font-weight: 600 !important;
+  letter-spacing: 0.04em !important;
+}
+body[data-dsh-claude-style] .dsh-claude-context-stats-item {
+  display: flex !important;
+  flex-direction: column !important;
+  gap: 1px !important;
+  min-width: 0 !important;
+}
+body[data-dsh-claude-style] .dsh-claude-context-stats-label {
+  color: var(--dsw-alias-label-tertiary) !important;
+  font-size: 12px !important;
+  line-height: 16px !important;
+  overflow: hidden !important;
+  text-overflow: ellipsis !important;
+  white-space: nowrap !important;
+}
+body[data-dsh-claude-style] .dsh-claude-context-stats-value {
+  color: var(--dsw-alias-label-primary) !important;
+  font-size: 14px !important;
+  font-weight: 500 !important;
+  line-height: 20px !important;
+  font-variant-numeric: tabular-nums !important;
+}
+
+/* ---------- the block while the numbers are still on their way ---------- */
+/* The two sections at the size the numbers will take, drawn as bars under the
+   real headings: a row keeps a real row's 37px (16 + 1 + 20), so the panel
+   opens at its final height and nothing grows under the pointer. It shows only
+   while the session's projections have answered nothing AND within the short
+   deadline the feature allows — a host that serves no such projection falls
+   back to the panel the host drew, rather than keeping placeholder bars. */
+body[data-dsh-claude-style] .dsh-claude-context-stats[data-dsh-claude-context-skeleton] .dsh-claude-context-stats-item {
+  min-height: 37px !important;
+  justify-content: center !important;
+}
+body[data-dsh-claude-style] .dsh-claude-context-stats-skeleton-label,
+body[data-dsh-claude-style] .dsh-claude-context-stats-skeleton-value {
+  display: block !important;
+  border-radius: 3px !important;
+  background: var(--dsw-alias-interactive-bg-hover-solid, rgba(0, 0, 0, 0.06)) !important;
+  animation: dsh-claude-context-stats-pulse 1.6s ease-in-out infinite !important;
+}
+body[data-dsh-claude-style] .dsh-claude-context-stats-skeleton-label {
+  width: 68% !important;
+  height: 12px !important;
+}
+body[data-dsh-claude-style] .dsh-claude-context-stats-skeleton-value {
+  width: 46% !important;
+  height: 14px !important;
+}
+@keyframes dsh-claude-context-stats-pulse {
+  0%, 100% { opacity: 0.55; }
+  50% { opacity: 1; }
+}

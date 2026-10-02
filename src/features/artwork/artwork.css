@@ -1,0 +1,406 @@
+/* ---------- the artwork layer (src/features/artwork/artwork.js) ---------- */
+/*
+ * One fixed child of <body> at a negative z-index: it paints above the canvas
+ * and below everything the app draws, so the surfaces sitting directly on the
+ * canvas give way while the layer is present. The main column's rectangle
+ * arrives from the feature's pass as four custom properties, and every
+ * position below is written against them; the character's own files and inks
+ * arrive the same way, one variable per manifest key.
+ *
+ * These rules follow theme/tokens.css in the assembly order so the ones that
+ * tie with a palette rule on specificity win by source order.
+ */
+
+/* ---------- the character's palette ---------- */
+/*
+ * A character may bring a palette of its own. The feature writes every value
+ * twice, once per polarity, and these rules pick the one that applies and hand
+ * it to the tokens the page is painted with: the skin's own (--dsh-claude-*)
+ * and the ones it passes to the host (--dsw-alias-*). Every selector carries
+ * the brand attribute as well as the artwork marker, so they outrank the brand
+ * palettes in theme/tokens.css whichever order the sheets arrive in.
+ */
+html body[data-dsh-claude-style][%%ARTWORK_PALETTE_ATTR%%][%%BRAND_ATTR%%] {
+    --dsh-claude-art-canvas: var(--dsh-claude-art-canvas-light);
+    --dsh-claude-art-sidebar: var(--dsh-claude-art-sidebar-light);
+    --dsh-claude-art-panel: var(--dsh-claude-art-panel-light);
+    --dsh-claude-art-raised: var(--dsh-claude-art-raised-light);
+    --dsh-claude-art-layer-3: var(--dsh-claude-art-layer-3-light);
+    --dsh-claude-art-ink: var(--dsh-claude-art-ink-light);
+    --dsh-claude-art-muted: var(--dsh-claude-art-muted-light);
+    --dsh-claude-art-tertiary: var(--dsh-claude-art-tertiary-light);
+    --dsh-claude-art-accent: var(--dsh-claude-art-accent-light);
+    --dsh-claude-art-accent-soft: var(--dsh-claude-art-accent-soft-light);
+    --dsh-claude-art-accent-hover: var(--dsh-claude-art-accent-hover-light);
+    --dsh-claude-art-on-accent: var(--dsh-claude-art-on-accent-light);
+    --dsh-claude-art-border: var(--dsh-claude-art-border-light);
+    --dsh-claude-art-border-2: var(--dsh-claude-art-border-2-light);
+    --dsh-claude-art-border-3: var(--dsh-claude-art-border-3-light);
+    --dsh-claude-art-hover: var(--dsh-claude-art-hover-light);
+    --dsh-claude-art-hover-strong: var(--dsh-claude-art-hover-strong-light);
+    --dsh-claude-art-input: var(--dsh-claude-art-input-light);
+    --dsh-claude-art-scrollbar: var(--dsh-claude-art-scrollbar-light);
+}
+
+html body[data-dsh-claude-style][%%ARTWORK_PALETTE_ATTR%%][%%BRAND_ATTR%%][data-ds-dark-theme] {
+    --dsh-claude-art-canvas: var(--dsh-claude-art-canvas-dark);
+    --dsh-claude-art-sidebar: var(--dsh-claude-art-sidebar-dark);
+    --dsh-claude-art-panel: var(--dsh-claude-art-panel-dark);
+    --dsh-claude-art-raised: var(--dsh-claude-art-raised-dark);
+    --dsh-claude-art-layer-3: var(--dsh-claude-art-layer-3-dark);
+    --dsh-claude-art-ink: var(--dsh-claude-art-ink-dark);
+    --dsh-claude-art-muted: var(--dsh-claude-art-muted-dark);
+    --dsh-claude-art-tertiary: var(--dsh-claude-art-tertiary-dark);
+    --dsh-claude-art-accent: var(--dsh-claude-art-accent-dark);
+    --dsh-claude-art-accent-soft: var(--dsh-claude-art-accent-soft-dark);
+    --dsh-claude-art-accent-hover: var(--dsh-claude-art-accent-hover-dark);
+    --dsh-claude-art-on-accent: var(--dsh-claude-art-on-accent-dark);
+    --dsh-claude-art-border: var(--dsh-claude-art-border-dark);
+    --dsh-claude-art-border-2: var(--dsh-claude-art-border-2-dark);
+    --dsh-claude-art-border-3: var(--dsh-claude-art-border-3-dark);
+    --dsh-claude-art-hover: var(--dsh-claude-art-hover-dark);
+    --dsh-claude-art-hover-strong: var(--dsh-claude-art-hover-strong-dark);
+    --dsh-claude-art-input: var(--dsh-claude-art-input-dark);
+    --dsh-claude-art-scrollbar: var(--dsh-claude-art-scrollbar-dark);
+}
+
+/* The mapping itself: the palette's surfaces, inks and accent onto one canvas
+   and one accent for the whole page. */
+html body[data-dsh-claude-style][%%ARTWORK_PALETTE_ATTR%%][%%BRAND_ATTR%%] {
+    --dsh-claude-canvas: var(--dsh-claude-art-canvas);
+    --dsh-claude-sidebar-canvas: var(--dsh-claude-art-sidebar);
+    --dsh-claude-raised: var(--dsh-claude-art-raised);
+    --dsh-claude-ink-strong: var(--dsh-claude-art-ink);
+    --dsh-claude-session-ink: var(--dsh-claude-art-muted);
+    --dsh-claude-link-hover: var(--dsh-claude-art-accent-hover);
+    --dsh-claude-logo-ink: var(--dsh-claude-art-ink);
+    --dsh-claude-table-head: var(--dsh-claude-art-panel);
+    --dsh-claude-scrollbar: var(--dsh-claude-art-scrollbar);
+    --dsh-claude-hover-bg: var(--dsh-claude-art-hover);
+    --dsh-claude-inline-code-bg: var(--dsh-claude-art-accent-soft);
+    --dsw-alias-bg-base: var(--dsh-claude-art-canvas);
+    --dsw-alias-bg-layer-1: var(--dsh-claude-art-panel);
+    --dsw-alias-bg-layer-2: var(--dsh-claude-art-raised);
+    --dsw-alias-bg-layer-3: var(--dsh-claude-art-layer-3);
+    --dsw-alias-bg-overlay: var(--dsh-claude-art-raised);
+    --dsw-specific-sidebar-fill: var(--dsh-claude-art-sidebar);
+    --dsw-specific-input-major: var(--dsh-claude-art-input);
+    --dsw-specific-selector: var(--dsh-claude-art-input);
+    --dsw-alias-markdown-code-block: var(--dsh-claude-art-panel);
+    --dsw-alias-markdown-code-block-banner: var(--dsh-claude-art-raised);
+    --dsw-alias-markdown-inline-code: var(--dsh-claude-art-accent-soft);
+    --dsw-alias-label-primary: var(--dsh-claude-art-ink);
+    --dsw-alias-label-primary-bluish: var(--dsh-claude-art-ink);
+    --dsw-alias-label-primary-foreground: var(--dsh-claude-art-on-accent);
+    --dsw-alias-label-secondary: var(--dsh-claude-art-muted);
+    --dsw-alias-label-tertiary: var(--dsh-claude-art-tertiary);
+    --dsw-alias-brand-primary: var(--dsh-claude-art-accent);
+    --dsw-alias-brand-text: var(--dsh-claude-art-ink);
+    --dsw-alias-brand-primary-new-colorprimary-new-color: var(--dsh-claude-art-accent);
+    --dsw-alias-state-business-primary: var(--dsh-claude-art-accent);
+    --dsw-alias-state-business-tertiary: var(--dsh-claude-art-accent-soft);
+    --dsw-alias-button-primary-fill: var(--dsh-claude-art-accent);
+    --dsw-alias-button-primary-hover: var(--dsh-claude-art-accent-hover);
+    --dsw-alias-button-info-fill: var(--dsh-claude-art-accent);
+    --dsw-alias-button-info-hover: var(--dsh-claude-art-accent-hover);
+    --dsw-alias-link: var(--dsh-claude-art-accent);
+    --dsw-alias-interactive-bg-hover: var(--dsh-claude-art-hover);
+    --dsw-alias-interactive-bg-hover-solid: var(--dsh-claude-art-hover-strong);
+    --dsw-alias-interactive-bg-active: var(--dsh-claude-art-hover-strong);
+    --dsw-focus-ring-color: var(--dsh-claude-art-accent);
+    --dsw-alias-border-l1: var(--dsh-claude-art-border);
+    --dsw-alias-border-l2: var(--dsh-claude-art-border-2);
+    --dsw-alias-border-l2-darkmode-thin: var(--dsh-claude-art-border-2);
+    --dsw-alias-border-l3: var(--dsh-claude-art-border-3);
+}
+
+/* The canvas moves up to <html> while the layer is on: the body's background
+   paints over a negative z-index child, and the document element cannot read
+   the body's tokens, so each palette states its canvas here. */
+html:has(body[%%ARTWORK_ATTR%%]) {
+    background-color: #141413 !important;
+}
+
+html:has(body[%%ARTWORK_ATTR%%]:not([data-ds-dark-theme])) {
+    background-color: #fcfcfb !important;
+}
+
+html:has(body[%%ARTWORK_ATTR%%][%%BRAND_ATTR%%="%%BRAND_DEEPSEEK%%"]) {
+    background-color: #13161d !important;
+}
+
+html:has(body[%%ARTWORK_ATTR%%][%%BRAND_ATTR%%="%%BRAND_DEEPSEEK%%"]:not([data-ds-dark-theme])) {
+    background-color: #fafbff !important;
+}
+
+/* A character that brought a palette paints the canvas itself. Its colour is
+   stated once per polarity by the feature, and on the document element — which
+   is where <html> can read it — so these follow the fixed pairs above. */
+html:has(body[data-dsh-claude-style][%%ARTWORK_PALETTE_ATTR%%][%%BRAND_ATTR%%]) {
+    background-color: var(--dsh-claude-art-canvas-dark) !important;
+}
+
+html:has(body[data-dsh-claude-style][%%ARTWORK_PALETTE_ATTR%%][%%BRAND_ATTR%%]:not([data-ds-dark-theme])) {
+    background-color: var(--dsh-claude-art-canvas-light) !important;
+}
+
+/* The base token is what the window's backdrop is painted with: the shell's
+   frame, the app root and the conversation component's own root all read it, so
+   clearing the token opens the whole canvas at once. Surfaces that carry
+   content take it back below. */
+body[data-dsh-claude-style][%%ARTWORK_ATTR%%] {
+    --dsw-alias-bg-base: transparent !important;
+}
+
+/* The shell's frame paints a surface of its own on top of that: it read the
+   token as transparent yet still computed to the opaque canvas, because the
+   host paints that element directly. It is matched through the conversation
+   column it holds, which keeps every other frame on its own surface. */
+html body[data-dsh-claude-style][%%ARTWORK_ATTR%%] #root [class*="_frame"]:has(> [class*="centerCol"]) {
+    background-color: transparent !important;
+}
+
+/* The body, the app root and the conversation column each carry the canvas.
+   Every selector here carries the skin root as well as the artwork marker: a
+   released build of this skin installed beside this one states the canvas on
+   these same elements with its own `!important`, and the extra attribute (plus
+   the root id on #root) is what keeps these rules ahead of that copy whatever
+   order the two stylesheets arrive in. */
+html body[data-dsh-claude-style][%%ARTWORK_ATTR%%],
+html body[data-dsh-claude-style][%%ARTWORK_ATTR%%] #root,
+html body[data-dsh-claude-style][%%ARTWORK_ATTR%%] :is([data-pane="conversation"], [class*="centerCol"]) {
+    background-color: transparent !important;
+}
+
+/* Surfaces that carry content put the token back for their own subtree: the
+   composer's seat states its background with it (and fades the transcript out
+   with it), and the settings dialog states its card with it. Restoring the
+   token rather than restating each background keeps those rules as they are. */
+html body[data-dsh-claude-style][%%ARTWORK_ATTR%%] [data-composer-seat],
+html body[data-dsh-claude-style][%%ARTWORK_ATTR%%] :is([class*="settingsArea"] [class*="_panel"], [class*="settingsArea"] [role="dialog"], [class*="_overlay"] > [class*="_panel"]) {
+    --dsw-alias-bg-base: var(--dsh-claude-canvas) !important;
+}
+
+/* The band the composer fades the transcript out with sits directly above the
+   seat, and the character stands in it: it washes the feet. The band is turned
+   off rather than the surface, so the seat still hides the transcript behind
+   the composer and the character keeps its outline. */
+html body[data-dsh-claude-style][%%ARTWORK_ATTR%%] [data-composer-seat]::before {
+    --dsw-alias-bg-base: transparent !important;
+}
+
+/* The right sidebar's panes state no surface of their own — the frame was
+   behind them — so they get one. */
+html body[data-dsh-claude-style][%%ARTWORK_ATTR%%] :is([data-rightbar-col], [data-dockkit-pane], [data-dockkit-float]) {
+    background: var(--dsh-claude-canvas) !important;
+}
+
+#dsh-claude-artwork-layer {
+    position: fixed;
+    inset: 0;
+    z-index: -2;
+    overflow: hidden;
+    pointer-events: none;
+    contain: strict;
+    --dsh-claude-art-berry: var(--dsh-claude-art-berry-light);
+    --dsh-claude-art-coral: var(--dsh-claude-art-coral-light);
+    --dsh-claude-art-gold: var(--dsh-claude-art-gold-light);
+    --dsh-claude-art-node-opacity: 0.58;
+    --dsh-claude-art-char-opacity: 0.95;
+}
+
+body[data-ds-dark-theme] #dsh-claude-artwork-layer {
+    --dsh-claude-art-berry: var(--dsh-claude-art-berry-dark);
+    --dsh-claude-art-coral: var(--dsh-claude-art-coral-dark);
+    --dsh-claude-art-gold: var(--dsh-claude-art-gold-dark);
+    --dsh-claude-art-node-opacity: 0.55;
+}
+
+#dsh-claude-artwork-layer[data-dsh-claude-art-hidden] {
+    display: none;
+}
+
+#dsh-claude-artwork-layer > .dsh-claude-art-node {
+    position: absolute;
+    display: block;
+    pointer-events: none;
+}
+
+/* The look of a drawing node. This stays at class specificity: an id-level
+   default would outrank every rule below and flatten the per-node inks. */
+.dsh-claude-art-node {
+    background-color: var(--dsh-claude-art-berry);
+    opacity: var(--dsh-claude-art-node-opacity);
+    -webkit-mask-repeat: no-repeat;
+    mask-repeat: no-repeat;
+    -webkit-mask-position: center;
+    mask-position: center;
+    -webkit-mask-size: contain;
+    mask-size: contain;
+}
+
+/* A narrow main column has no room for the two drawings that crowd the top
+   right; the feature writes the attribute. */
+body[%%ARTWORK_NARROW_ATTR%%] #dsh-claude-artwork-layer > .dsh-claude-art-doodle-b,
+body[%%ARTWORK_NARROW_ATTR%%] #dsh-claude-artwork-layer > .dsh-claude-art-upper {
+    display: none;
+}
+
+/* Corner line: the column's top left. */
+.dsh-claude-art-corner {
+    left: calc(var(--dsh-claude-art-wl, 0px) + 10px);
+    top: calc(var(--dsh-claude-art-wt, 0px) + 11px);
+    width: min(calc(var(--dsh-claude-art-ww, 0px) * 0.3), 520px);
+    aspect-ratio: 1600 / 485;
+    -webkit-mask-image: var(--dsh-claude-art-img-corner);
+    mask-image: var(--dsh-claude-art-img-corner);
+    -webkit-mask-position: left top;
+    mask-position: left top;
+    opacity: calc(var(--dsh-claude-art-node-opacity) + 0.08);
+}
+
+/* Upper line: the column's top right. */
+.dsh-claude-art-upper {
+    right: calc(100vw - var(--dsh-claude-art-wl, 0px) - var(--dsh-claude-art-ww, 0px) + 16px);
+    top: calc(var(--dsh-claude-art-wt, 0px) + 6px);
+    width: min(calc(var(--dsh-claude-art-ww, 0px) * 0.22), 342px);
+    aspect-ratio: 490 / 315;
+    background-color: var(--dsh-claude-art-coral);
+    -webkit-mask-image: var(--dsh-claude-art-img-upper);
+    mask-image: var(--dsh-claude-art-img-upper);
+    -webkit-mask-position: right top;
+    mask-position: right top;
+}
+
+/* Doodle: the column's bottom left. */
+.dsh-claude-art-doodle {
+    left: calc(var(--dsh-claude-art-wl, 0px) + 14px);
+    bottom: calc(var(--dsh-claude-art-drop, 0px) + 16px);
+    width: min(calc(var(--dsh-claude-art-ww, 0px) * 0.17), 235px);
+    aspect-ratio: 1267 / 1241;
+    -webkit-mask-image: var(--dsh-claude-art-img-doodle);
+    mask-image: var(--dsh-claude-art-img-doodle);
+    opacity: calc(var(--dsh-claude-art-node-opacity) + 0.18);
+}
+
+/* The same doodle mirrored: fills the top right under the upper line. */
+.dsh-claude-art-doodle-b {
+    right: calc(100vw - var(--dsh-claude-art-wl, 0px) - var(--dsh-claude-art-ww, 0px) + 34px);
+    top: calc(var(--dsh-claude-art-wt, 0px) + 96px);
+    width: min(calc(var(--dsh-claude-art-ww, 0px) * 0.1), 150px);
+    aspect-ratio: 1267 / 1241;
+    -webkit-mask-image: var(--dsh-claude-art-img-doodle);
+    mask-image: var(--dsh-claude-art-img-doodle);
+    transform: scaleX(-1) rotate(-8deg);
+    opacity: calc(var(--dsh-claude-art-node-opacity) * 0.7);
+}
+
+/* The character: the column's bottom right, at 67% of the column's height and
+   as wide as its own aspect ratio makes it. It is a full-colour drawing, so it
+   carries no mask; a motion character is the same box around a <video>. */
+#dsh-claude-artwork-layer > .dsh-claude-art-character {
+    right: calc(100vw - var(--dsh-claude-art-wl, 0px) - var(--dsh-claude-art-ww, 0px) - 6px);
+    bottom: calc(var(--dsh-claude-art-drop, 0px) + 10px);
+    height: min(calc(var(--dsh-claude-art-wh, 0px) * 0.67), 980px);
+    aspect-ratio: var(--dsh-claude-art-aspect, 0.7365);
+    width: auto;
+    max-width: min(calc(var(--dsh-claude-art-ww, 0px) * 0.72), 860px);
+    background-color: transparent;
+    background-image: var(--dsh-claude-art-img-character-light);
+    background-size: contain;
+    background-position: right bottom;
+    background-repeat: no-repeat;
+    opacity: var(--dsh-claude-art-char-opacity);
+    filter: drop-shadow(0 18px 36px rgb(0 0 0 / 22%));
+}
+
+body[data-ds-dark-theme] #dsh-claude-artwork-layer > .dsh-claude-art-character {
+    background-image: var(--dsh-claude-art-img-character-dark);
+}
+
+/* A motion character draws through its <video>; the still frame stays as the
+   poster. The id-level selector is what outranks the dark rule above. */
+body[%%ARTWORK_ATTR%%] #dsh-claude-artwork-layer > .dsh-claude-art-character.dsh-claude-art-motion {
+    background-image: none;
+}
+
+#dsh-claude-artwork-layer > .dsh-claude-art-character.dsh-claude-art-motion > video {
+    display: block;
+    width: 100%;
+    height: 100%;
+    object-fit: contain;
+    object-position: right bottom;
+    background: transparent;
+    pointer-events: none;
+}
+
+/* Stars. */
+.dsh-claude-art-star-a {
+    left: calc(var(--dsh-claude-art-wl, 0px) + var(--dsh-claude-art-ww, 0px) * 0.52);
+    top: calc(var(--dsh-claude-art-wt, 0px) + 24px);
+    width: min(calc(var(--dsh-claude-art-ww, 0px) * 0.035), 46px);
+    aspect-ratio: 1 / 1;
+    background-color: var(--dsh-claude-art-gold);
+    -webkit-mask-image: var(--dsh-claude-art-img-star);
+    mask-image: var(--dsh-claude-art-img-star);
+    opacity: calc(var(--dsh-claude-art-node-opacity) + 0.22);
+}
+
+.dsh-claude-art-star-b {
+    left: calc(var(--dsh-claude-art-wl, 0px) + 42px);
+    bottom: calc(var(--dsh-claude-art-drop, 0px) + 132px);
+    width: min(calc(var(--dsh-claude-art-ww, 0px) * 0.024), 32px);
+    aspect-ratio: 1 / 1;
+    background-color: var(--dsh-claude-art-berry);
+    -webkit-mask-image: var(--dsh-claude-art-img-star);
+    mask-image: var(--dsh-claude-art-img-star);
+    transform: rotate(18deg);
+    opacity: calc(var(--dsh-claude-art-node-opacity) + 0.16);
+}
+
+/* Candies. */
+.dsh-claude-art-candy-wrapped {
+    left: calc(var(--dsh-claude-art-wl, 0px) + var(--dsh-claude-art-ww, 0px) * 0.12);
+    top: calc(var(--dsh-claude-art-wt, 0px) + var(--dsh-claude-art-wh, 0px) * 0.34);
+    width: min(calc(var(--dsh-claude-art-ww, 0px) * 0.03), 40px);
+    aspect-ratio: 1 / 1;
+    background-color: var(--dsh-claude-art-coral);
+    -webkit-mask-image: var(--dsh-claude-art-img-candy-wrapped);
+    mask-image: var(--dsh-claude-art-img-candy-wrapped);
+    transform: rotate(-14deg);
+}
+
+.dsh-claude-art-candy-lollipop {
+    left: calc(var(--dsh-claude-art-wl, 0px) + var(--dsh-claude-art-ww, 0px) * 0.08);
+    bottom: calc(var(--dsh-claude-art-drop, 0px) + 62px);
+    width: min(calc(var(--dsh-claude-art-ww, 0px) * 0.026), 34px);
+    aspect-ratio: 1 / 1;
+    background-color: var(--dsh-claude-art-berry);
+    -webkit-mask-image: var(--dsh-claude-art-img-candy-lollipop);
+    mask-image: var(--dsh-claude-art-img-candy-lollipop);
+    transform: rotate(12deg);
+}
+
+/* The two small mascots. */
+.dsh-claude-art-acao-heart {
+    left: calc(var(--dsh-claude-art-wl, 0px) + var(--dsh-claude-art-ww, 0px) * 0.21);
+    bottom: calc(var(--dsh-claude-art-drop, 0px) + 22px);
+    width: min(calc(var(--dsh-claude-art-ww, 0px) * 0.045), 58px);
+    aspect-ratio: 1 / 1;
+    background-color: var(--dsh-claude-art-gold);
+    -webkit-mask-image: var(--dsh-claude-art-img-acao-heart);
+    mask-image: var(--dsh-claude-art-img-acao-heart);
+    opacity: calc(var(--dsh-claude-art-node-opacity) + 0.26);
+}
+
+.dsh-claude-art-acao-cheer {
+    left: calc(var(--dsh-claude-art-wl, 0px) + var(--dsh-claude-art-ww, 0px) * 0.6);
+    bottom: calc(var(--dsh-claude-art-drop, 0px) + 44px);
+    width: min(calc(var(--dsh-claude-art-ww, 0px) * 0.038), 50px);
+    aspect-ratio: 1 / 1;
+    background-color: var(--dsh-claude-art-berry);
+    -webkit-mask-image: var(--dsh-claude-art-img-acao-cheer);
+    mask-image: var(--dsh-claude-art-img-acao-cheer);
+    transform: rotate(9deg);
+    opacity: calc(var(--dsh-claude-art-node-opacity) + 0.2);
+}

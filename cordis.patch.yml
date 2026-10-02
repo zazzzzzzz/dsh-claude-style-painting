@@ -1,0 +1,4 @@
+# Claude Code Desktop theme with a painting artwork layer: bundle patch: inserts its dsh.client row into the web roster.
+- insert:
+    - id: ui-skin-claude-painting
+      name: 'dsh-claude-painting'

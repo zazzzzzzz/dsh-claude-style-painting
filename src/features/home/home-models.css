@@ -1,0 +1,206 @@
+/* ---------- the usage panel's Models tab ---------- */
+/* Claude Code's own shape: a per-day stacked chart over a ranked list. A model's
+   rank in the list is its colour in the chart, so both read from `data-rank`. */
+
+/* The tick labels live in the gutter this variable reserves, outside the plot. */
+body[data-dsh-claude-style] .dsh-claude-home-chart {
+  --dsh-home-axis: 34px;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+body[data-dsh-claude-style] .dsh-claude-home-chart-plot {
+  position: relative;
+  height: 152px;
+  margin-left: var(--dsh-home-axis);
+}
+
+body[data-dsh-claude-style] .dsh-claude-home-chart-tick {
+  position: absolute;
+  left: calc(-1 * var(--dsh-home-axis));
+  width: calc(var(--dsh-home-axis) - 6px);
+  transform: translateY(50%);
+  color: var(--dsw-alias-label-tertiary, #8f8a7e);
+  font-size: 11px;
+  line-height: 14px;
+  text-align: right;
+  font-variant-numeric: tabular-nums;
+}
+
+/* One column per day, stacked from the axis up: the column owns the rounding so
+   the top of the stack is what curves, exactly like Claude's bars. */
+body[data-dsh-claude-style] .dsh-claude-home-chart-bars {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  align-items: flex-end;
+  gap: 2px;
+}
+
+body[data-dsh-claude-style] .dsh-claude-home-chart-col {
+  display: flex;
+  flex: 1 1 0;
+  flex-direction: column;
+  justify-content: flex-end;
+  min-width: 0;
+  border-radius: 2px;
+  overflow: hidden;
+}
+
+body[data-dsh-claude-style] .dsh-claude-home-chart-seg {
+  display: block;
+  width: 100%;
+}
+
+body[data-dsh-claude-style] .dsh-claude-home-chart-axis {
+  display: flex;
+  gap: 2px;
+  margin-left: var(--dsh-home-axis);
+}
+
+body[data-dsh-claude-style] .dsh-claude-home-chart-label {
+  flex: 1 1 0;
+  min-width: 0;
+  color: var(--dsw-alias-label-tertiary, #8f8a7e);
+  font-size: 11px;
+  line-height: 14px;
+  white-space: nowrap;
+  font-variant-numeric: tabular-nums;
+}
+
+/* The ramp: the biggest spender is the deepest data blue, and the walk down ends
+   in the warm grey that stands for every model past the list. */
+body[data-dsh-claude-style] .dsh-claude-home-chart-seg[data-rank="0"],
+body[data-dsh-claude-style] .dsh-claude-home-model-swatch[data-rank="0"] {
+  background: #2f5fc4;
+}
+
+body[data-dsh-claude-style] .dsh-claude-home-chart-seg[data-rank="1"],
+body[data-dsh-claude-style] .dsh-claude-home-model-swatch[data-rank="1"] {
+  background: #3b6ecf;
+}
+
+body[data-dsh-claude-style] .dsh-claude-home-chart-seg[data-rank="2"],
+body[data-dsh-claude-style] .dsh-claude-home-model-swatch[data-rank="2"] {
+  background: #5b88da;
+}
+
+body[data-dsh-claude-style] .dsh-claude-home-chart-seg[data-rank="3"],
+body[data-dsh-claude-style] .dsh-claude-home-model-swatch[data-rank="3"] {
+  background: #7ea3e4;
+}
+
+body[data-dsh-claude-style] .dsh-claude-home-chart-seg[data-rank="4"],
+body[data-dsh-claude-style] .dsh-claude-home-model-swatch[data-rank="4"] {
+  background: #a3bfec;
+}
+
+body[data-dsh-claude-style] .dsh-claude-home-chart-seg[data-rank="5"],
+body[data-dsh-claude-style] .dsh-claude-home-model-swatch[data-rank="5"] {
+  background: #c3d5f3;
+}
+
+body[data-dsh-claude-style] .dsh-claude-home-chart-seg[data-rank="6"],
+body[data-dsh-claude-style] .dsh-claude-home-model-swatch[data-rank="6"] {
+  background: #dbe5f8;
+}
+
+body[data-dsh-claude-style] .dsh-claude-home-chart-seg[data-rank="7"],
+body[data-dsh-claude-style] .dsh-claude-home-model-swatch[data-rank="7"] {
+  background: #b9b5ac;
+}
+
+body[data-dsh-claude-style] .dsh-claude-home-models {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+body[data-dsh-claude-style] .dsh-claude-home-model {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  min-width: 0;
+}
+
+body[data-dsh-claude-style] .dsh-claude-home-model-swatch {
+  flex: none;
+  width: 8px;
+  height: 8px;
+  border-radius: 2px;
+}
+
+body[data-dsh-claude-style] .dsh-claude-home-model-name {
+  flex: 0 1 auto;
+  min-width: 0;
+  overflow: hidden;
+  color: var(--dsw-alias-label-primary, #141413);
+  font-size: 13px;
+  line-height: 18px;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+}
+
+/* Claude's row reads name, then the input/output split, then the share: the
+   split floats right against the fixed share column so the numbers line up. */
+body[data-dsh-claude-style] .dsh-claude-home-model-split {
+  margin-left: auto;
+  color: var(--dsw-alias-label-tertiary, #8f8a7e);
+  font-size: 12px;
+  line-height: 18px;
+  white-space: nowrap;
+  font-variant-numeric: tabular-nums;
+}
+
+body[data-dsh-claude-style] .dsh-claude-home-model-share {
+  flex: none;
+  width: 48px;
+  color: var(--dsw-alias-label-primary, #141413);
+  font-size: 12px;
+  line-height: 18px;
+  text-align: right;
+  white-space: nowrap;
+  font-variant-numeric: tabular-nums;
+}
+
+body[data-dsh-claude-style] .dsh-claude-home-models-more {
+  appearance: none;
+  align-self: flex-start;
+  margin: 0;
+  padding: 0;
+  border: 0;
+  background: transparent;
+  color: var(--dsw-alias-label-tertiary, #8f8a7e);
+  font-family: inherit;
+  font-size: 12px;
+  line-height: 18px;
+  cursor: pointer;
+}
+
+body[data-dsh-claude-style] .dsh-claude-home-models-more:hover {
+  color: var(--dsw-alias-label-primary, #141413);
+}
+
+body[data-dsh-claude-style] .dsh-claude-home-models-empty {
+  padding: 18px 0;
+  color: var(--dsw-alias-label-tertiary, #8f8a7e);
+  font-size: 12px;
+  line-height: 16px;
+  text-align: center;
+}
+
+/* A skeleton row is one stand-in bar: the name, the split and the share are
+   placeholders of their own height, so the list keeps its rhythm. */
+body[data-dsh-claude-style] .dsh-claude-home-models[data-skeleton] .dsh-claude-home-model-name,
+body[data-dsh-claude-style] .dsh-claude-home-models[data-skeleton] .dsh-claude-home-model-split,
+body[data-dsh-claude-style] .dsh-claude-home-models[data-skeleton] .dsh-claude-home-model-share {
+  display: none;
+}
+
+body[data-dsh-claude-style] .dsh-claude-home-models[data-skeleton] .dsh-claude-home-model-swatch {
+  width: 100%;
+  height: 8px;
+  border-radius: 4px;
+  background: color-mix(in srgb, var(--dsw-alias-label-primary, #141413) 9%, transparent);
+}

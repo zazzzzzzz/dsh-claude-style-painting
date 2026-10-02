@@ -1,0 +1,67 @@
+{
+  "name": "dsh-claude-painting",
+  "description": "Claude Code Desktop theme for DeepSeek Harness (dsh) web GUI, with a painting artwork layer: a standing character and its line drawings behind the main column",
+  "version": "0.1.0",
+  "type": "module",
+  "main": "host/index.js",
+  "icon": "lib/claude-mark.svg",
+  "scripts": {
+    "build": "node scripts/build.mjs",
+    "probe": "node scripts/probe.cjs",
+    "smoke": "node scripts/smoke.cjs",
+    "prepublishOnly": "npm run build"
+  },
+  "exports": {
+    ".": "./host/index.js",
+    "./client": "./lib/client.js",
+    "./package.json": "./package.json",
+    "./locale/*": "./locale/*"
+  },
+  "dsh": {
+    "engines": {
+      "dsh": ">=0.1.7"
+    },
+    "bundle": {
+      "patch": "./cordis.patch.yml"
+    },
+    "client": {
+      "inject": [],
+      "platform": "web"
+    }
+  },
+  "files": [
+    "host",
+    "lib",
+    "locale",
+    "assets",
+    "skin.json",
+    "cordis.patch.yml",
+    "docs/STYLE.md",
+    "docs/architecture.md",
+    "CHANGELOG.md",
+    "README.md",
+    "README.en.md",
+    "LICENSE",
+    "fonts/JetBrainsMonoVariable.ttf",
+    "fonts/JetBrainsMonoItalicVariable.ttf",
+    "fonts/OFL.txt",
+    "fonts/AUTHORS.txt"
+  ],
+  "keywords": [
+    "dsh",
+    "deepseek-harness",
+    "dsh-plugin",
+    "cordis",
+    "web-ui",
+    "theme",
+    "claude",
+    "claude-code",
+    "artwork",
+    "skin",
+    "desktop-theme",
+    "anthropic",
+    "editorial"
+  ],
+  "license": "MIT",
+  "author": "Nwflower"
+}

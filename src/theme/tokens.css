@@ -1,0 +1,356 @@
+/* --- 2.1 Design Tokens (Dark Base & Light Overrides) --- */
+/* ---------- typography tokens: theme-independent ---------- */
+body[data-dsh-claude-style] {
+  --dsw-font-family: %%SANS%%;
+  --dsw-font-serif: %%SERIF%%;
+  --dsw-font-prose: %%PROSE%%;
+  --dsw-font-code: %%MONO%%;
+  /* Claude's lockup is drawn in Anthropic's serif, so its rows take the same face:
+     the wordmark and the rest of the label then read as one piece of lettering.
+     The face is already served for the UI (see theme/typography.css); the serif token
+     stays behind it so a missing font degrades to the shipped serif, not to sans. */
+  --dsw-font-brand-claude: 'Anthropic Serif Web Text', var(--dsw-font-serif);
+  /* Markdown document headings keep the host's own ladder, steepened from
+     21/19/18 toward Claude's measured ≈21/17/15; h1 and h4 keep the host's
+     values. The host reads these through a `font:` shorthand that names
+     --dsw-font-family directly, so overriding the `-font-family` sub-tokens
+     never reached the page — the shorthand itself is what has to be
+     re-declared. */
+  --dsw-font-markdown-h2: 700 calc(18px + var(--dsh-content-font-delta)) / calc(26px + var(--dsh-content-font-delta)) var(--dsw-font-prose);
+  --dsw-font-markdown-h3: 700 calc(16px + var(--dsh-content-font-delta)) / calc(24px + var(--dsh-content-font-delta)) var(--dsw-font-prose);
+}
+
+/* ---------- design tokens: warm-black (dark) palette ---------- */
+/* The dark palette is scoped to [data-ds-dark-theme] on purpose. The host
+   ships its own dark palette on body[data-ds-dark-theme] — the same (0,1,1)
+   weight as a bare body[data-dsh-claude-style] — so the two only tie, and
+   whichever stylesheet the loader appends last wins. When the host's lands
+   after this one its blue accents (--dsw-alias-state-business-primary,
+   --dsw-alias-button-info-fill, --dsw-alias-link and the brand "new color")
+   replace the warm palette. Naming the attribute keeps this block at (0,2,1)
+   and makes it order-independent. */
+body[data-dsh-claude-style][data-ds-dark-theme] {
+  --dsw-alias-bg-base: #141413;
+  --dsw-alias-bg-layer-1: #1c1b1a;
+  --dsw-alias-bg-layer-2: #242320;
+  --dsw-alias-bg-layer-3: #2e2c29;
+  --dsw-alias-bg-overlay: #242320;
+  --dsw-alias-border-l1: #242320;
+  --dsw-alias-border-l2: #2e2c29;
+  --dsw-alias-border-l3: #3a3833;
+  --dsw-alias-brand-primary: #d97757;
+  --dsw-alias-brand-text: #faf9f5;
+  /* The host takes a primary button's fill from --dsw-alias-brand-primary but
+     its hover from a monochrome step of its own scale (light #43454a, dark
+     #ebeef2). The skin's accent is clay, so a filled button states both steps
+     here and the hover stays in the fill's own family. */
+  --dsw-alias-button-primary-fill: #d97757;
+  --dsw-alias-button-primary-hover: #e08a6d;
+  --dsw-alias-button-elevated-fill: #242320;
+  --dsw-alias-button-floating-fill: #242320;
+  --dsw-alias-button-floating-hover: #2e2c29;
+  --dsw-alias-button-info-fill: #d97757;
+  --dsw-alias-button-info-hover: #e08a6d;
+  --dsw-alias-interactive-bg-active: rgba(217, 119, 87, 0.30);
+  --dsh-claude-hover-bg: rgba(255, 255, 255, 0.08);
+  --dsh-claude-inline-code-bg: rgba(255, 255, 255, 0.05);
+  /* The reasoning slider's top rung is the one place the clay accent does not
+     rule: Claude's own "Ultracode" rung is violet, and the user asked for that
+     violet rather than a clay translation of it. Values measured off Claude's
+     recorded slider (block ≈ rgb(150,127,200), name ink darker still); the
+     matrix's eight tone buckets (features/effort/effort-picker.css) are mixed from
+     these tokens, so they follow any change made here. */
+  --dsh-claude-apex: #9d8ce0;
+  --dsh-claude-apex-flash: #e6e0fb;
+  --dsh-claude-apex-ink: #b9adf0;
+  --dsh-claude-inline-code-fg: #e8a08a;
+  --dsh-claude-link: #8ab4f8;
+  --dsh-claude-link-underline: rgba(138, 180, 248, 0.6);
+  /* The host pins the code-block surface on `pre.shiki` with !important, so it
+     is only reachable through its own token; #1c1b1a is the value the skin's
+     (inert) `pre { background }` rule always meant. */
+  --dsw-alias-markdown-code-block: #1c1b1a;
+  --dsw-alias-markdown-code-block-banner: #242320;
+  --dsw-alias-interactive-bg-hover: var(--dsh-claude-hover-bg);
+  --dsw-alias-interactive-bg-hover-solid: #2e2c29;
+  --dsw-alias-label-primary: #faf9f5;
+  --dsw-alias-label-primary-bluish: #faf9f5;
+  --dsw-alias-label-secondary: #b0aea5;
+  --dsw-alias-label-tertiary: #8f8d84;
+  --dsw-alias-label-caption: #6b6a65;
+  --dsw-alias-state-business-primary: #d97757;
+  --dsw-alias-state-business-tertiary: #3a2a22;
+  --dsw-alias-link: #e08a6d;
+  --dsw-shadow-lv2: 0 4px 16px rgba(0, 0, 0, 0.30), 0 1px 3px rgba(0, 0, 0, 0.14);
+  --dsw-specific-input-major: #0f0e0d;
+  --dsw-specific-selector: #2e2c29;
+  --dsw-specific-sidebar-fill: #141413;
+  /* The host's "new color" brand accent (shipped under this doubled suffix)
+     resolves to a deepseek blue in both palettes; the skin has one accent. */
+  --dsw-alias-brand-primary-new-colorprimary-new-color: #d97757;
+  /* The skin's own surfaces and inks, named once so the DeepSeek palettes
+     below restate them in one place: the canvas and the sidebar's, the fill of
+     a raised card (popovers, menus, the search palette), the strongest ink of
+     an active row, a session title at rest, a table's header row, the
+     scrollbar thumb at rest and under the pointer, a text link under the
+     pointer, and the sidebar's brand art. */
+  --dsh-claude-canvas: #141413;
+  --dsh-claude-sidebar-canvas: #141413;
+  --dsh-claude-raised: #1e1e1d;
+  --dsh-claude-ink-strong: #f5f4ef;
+  --dsh-claude-session-ink: #8c8983;
+  --dsh-claude-table-head: #242320;
+  --dsh-claude-scrollbar: rgba(58, 56, 51, 0.9);
+  --dsh-claude-scrollbar-hover: rgba(107, 106, 101, 0.9);
+  --dsh-claude-link-hover: #f0a488;
+  --dsh-claude-logo-ink: #faf9f5;
+}
+
+/* ================= light variant: ivory editorial ================= */
+body[data-dsh-claude-style]:not([data-ds-dark-theme]) {
+  --dsw-alias-bg-base: #fcfcfb;
+  --dsw-alias-bg-layer-1: #fcfcfb;
+  --dsw-alias-bg-layer-2: #fbfbf9;
+  --dsw-alias-bg-layer-3: #f9f9f6;
+  --dsw-alias-bg-overlay: #ffffff;
+  --dsw-alias-border-l1: #e8e6dc;
+  --dsw-alias-border-l2: #dedcd2;
+  --dsw-alias-border-l3: #d0cdc1;
+  --dsw-alias-brand-primary: #d97757;
+  --dsw-alias-button-primary-fill: #d97757;
+  --dsw-alias-button-primary-hover: #c6613f;
+  --dsw-alias-button-info-fill: #d97757;
+  --dsw-alias-button-info-hover: #c6613f;
+  --dsw-alias-button-floating-fill: #ffffff;
+  --dsw-alias-button-floating-hover: #ffffff;
+  --dsw-alias-label-primary: #141413;
+  --dsw-alias-label-primary-bluish: #141413;
+  --dsw-alias-label-secondary: #6e6a60;
+  --dsw-alias-label-tertiary: #8f8a7e;
+  --dsw-alias-label-caption: #a6a094;
+  --dsw-alias-state-business-primary: #d97757;
+  --dsw-alias-state-business-tertiary: #e9dfd2;
+  --dsw-alias-link: #c6613f;
+  --dsw-specific-input-major: #ffffff;
+  --dsw-specific-menu: #ffffff;
+  --dsw-specific-selector: #fbfbf9;
+  --dsw-specific-sidebar-fill: #fbfbf9;
+  --dsh-claude-hover-bg: rgba(0, 0, 0, 0.08);
+  --dsh-claude-inline-code-bg: rgba(0, 0, 0, 0.05);
+  /* See the dark block: the top rung keeps Claude's violet, not the clay accent. */
+  --dsh-claude-apex: #8b7ad0;
+  --dsh-claude-apex-flash: #d9d2f5;
+  --dsh-claude-apex-ink: #5f51b5;
+  --dsw-alias-interactive-bg-hover: var(--dsh-claude-hover-bg);
+  --dsw-shadow-lv2: 0 4px 18px rgba(20, 20, 19, 0.10), 0 1px 3px rgba(20, 20, 19, 0.05);
+  --dsw-alias-brand-primary-new-colorprimary-new-color: #d97757;
+  /* Carried over from the dark base block so the light palette stays complete
+     now that the dark palette is dark-scoped. The two fills are palette-specific
+     instead: the host paints a solid hover chip and an elevated surface lighter
+     than the canvas here, and the light ink they carry needs a light fill. */
+  --dsw-alias-brand-text: #faf9f5;
+  --dsw-alias-button-elevated-fill: #ffffff;
+  --dsw-alias-interactive-bg-active: rgba(217, 119, 87, 0.30);
+  --dsw-alias-interactive-bg-hover-solid: #f0efe9;
+  /* User message bubbles: the host's light bubble token is deepseek-50 (blue);
+     use the skin's button-hover gray instead. */
+  --dsw-specific-bubble: var(--dsh-claude-hover-bg);
+  /* Markdown surfaces, measured off Claude: a white code block, a neutral-gray
+     inline-code chip, and blue links. The chip colour is the same gray the
+     components hover with, so the two read as one material. */
+  --dsw-alias-markdown-code-block: #ffffff;
+  --dsw-alias-markdown-code-block-banner: #ffffff;
+  --dsh-claude-inline-code-fg: #943333;
+  --dsh-claude-link: #184f95;
+  --dsh-claude-link-underline: rgba(24, 79, 149, 0.6);
+  /* The skin's own light surfaces and inks: the dark block's set, plus the
+     resting plate of a segmented control or a switch. */
+  --dsh-claude-canvas: #fcfcfb;
+  --dsh-claude-sidebar-canvas: #fbfbf9;
+  --dsh-claude-chip: #f6f6f4;
+  --dsh-claude-table-head: #f0f0ef;
+  --dsh-claude-scrollbar: rgba(208, 205, 193, 0.9);
+  --dsh-claude-scrollbar-hover: rgba(143, 138, 126, 0.8);
+  --dsh-claude-link-hover: #a94f2f;
+  --dsh-claude-logo-ink: #141413;
+}
+
+/* ================= the DeepSeek brand: blue ================= */
+/* The DeepSeek brand turns both palettes blue. The accent is DeepSeek's own
+   brand blue #4D6BFE — the colour of its whale logo, and of Deepy — on every
+   fill, check and focus ring the clay took, with a lighter step for text on
+   the dark canvas; the sidebar's whale and wordmark take it as well. The
+   neutrals are cool: a sky-tinted white canvas with the host's bluish inks
+   (its neutral-bluish ramp) in light, a blue-black canvas in dark. The light
+   surfaces keep only a HINT of sky — the canvas sits within a couple of steps
+   of white, and the sidebar, the raised layers and the chips step back from it
+   in the same measure, so the blue reads as a tint on white rather than as a
+   coloured page. User bubbles take a blue tint, as the host's own do, and
+   inline code keeps the body ink, as the host draws it. Claude's violet top
+   rung stays. */
+body[data-dsh-claude-style][%%BRAND_ATTR%%="%%BRAND_DEEPSEEK%%"]:not([data-ds-dark-theme]) {
+  --dsw-alias-bg-base: #fafbff;
+  --dsw-alias-bg-layer-1: #fafbff;
+  --dsw-alias-bg-layer-2: #f7f9ff;
+  --dsw-alias-bg-layer-3: #f4f7fe;
+  --dsw-alias-border-l1: #e7ecf7;
+  --dsw-alias-border-l2: #dde4f1;
+  --dsw-alias-border-l3: #cfd8ea;
+  --dsw-alias-brand-primary: #4d6bfe;
+  --dsw-alias-brand-text: #fafbff;
+  --dsw-alias-button-primary-fill: #4d6bfe;
+  --dsw-alias-button-primary-hover: #3a57e8;
+  --dsw-alias-button-info-fill: #4d6bfe;
+  --dsw-alias-button-info-hover: #3a57e8;
+  --dsw-alias-interactive-bg-active: rgba(77, 107, 254, 0.22);
+  --dsw-alias-label-primary: #0f1115;
+  --dsw-alias-label-primary-bluish: #0f1115;
+  --dsw-alias-label-secondary: #61666b;
+  --dsw-alias-label-tertiary: #81858c;
+  --dsw-alias-label-caption: #adb2b8;
+  --dsw-alias-state-business-primary: #4d6bfe;
+  --dsw-alias-state-business-tertiary: #e9eeff;
+  --dsw-alias-link: #3b56d9;
+  --dsw-alias-brand-primary-new-colorprimary-new-color: #4d6bfe;
+  --dsw-specific-selector: #f7f9ff;
+  --dsw-specific-sidebar-fill: #f7f9ff;
+  --dsw-specific-bubble: #eaf0fe;
+  --dsw-alias-interactive-bg-hover-solid: #eef3fc;
+  --dsh-claude-hover-bg: rgba(38, 49, 72, 0.08);
+  --dsh-claude-inline-code-bg: rgba(38, 49, 72, 0.05);
+  --dsh-claude-inline-code-fg: var(--dsw-alias-label-primary);
+  --dsh-claude-link: #3b56d9;
+  --dsh-claude-link-underline: rgba(59, 86, 217, 0.6);
+  --dsh-claude-link-hover: #2c43b8;
+  --dsh-claude-logo-ink: #4d6bfe;
+  --dsh-claude-canvas: #fafbff;
+  --dsh-claude-sidebar-canvas: #f7f9ff;
+  --dsh-claude-chip: #f2f6fd;
+  --dsh-claude-table-head: #eff3fb;
+  --dsh-claude-scrollbar: rgba(206, 216, 233, 0.9);
+  --dsh-claude-scrollbar-hover: rgba(129, 133, 140, 0.8);
+}
+
+body[data-dsh-claude-style][%%BRAND_ATTR%%="%%BRAND_DEEPSEEK%%"][data-ds-dark-theme] {
+  --dsw-alias-bg-base: #13161d;
+  --dsw-alias-bg-layer-1: #1a1e27;
+  --dsw-alias-bg-layer-2: #212631;
+  --dsw-alias-bg-layer-3: #2a303c;
+  --dsw-alias-bg-overlay: #212631;
+  --dsw-alias-border-l1: #212631;
+  --dsw-alias-border-l2: #2a303c;
+  --dsw-alias-border-l3: #363d4b;
+  --dsw-alias-brand-primary: #4d6bfe;
+  --dsw-alias-brand-text: #eef1f8;
+  --dsw-alias-button-primary-fill: #4d6bfe;
+  --dsw-alias-button-primary-hover: #6a84ff;
+  --dsw-alias-button-elevated-fill: #212631;
+  --dsw-alias-button-floating-fill: #212631;
+  --dsw-alias-button-floating-hover: #2a303c;
+  --dsw-alias-button-info-fill: #4d6bfe;
+  --dsw-alias-button-info-hover: #6a84ff;
+  --dsw-alias-interactive-bg-active: rgba(77, 107, 254, 0.30);
+  --dsw-alias-interactive-bg-hover-solid: #2a303c;
+  --dsw-alias-label-primary: #eef1f8;
+  --dsw-alias-label-primary-bluish: #eef1f8;
+  --dsw-alias-label-secondary: #aeb5c4;
+  --dsw-alias-label-tertiary: #8a92a3;
+  --dsw-alias-label-caption: #666e7e;
+  --dsw-alias-state-business-primary: #6a84ff;
+  --dsw-alias-state-business-tertiary: #253056;
+  --dsw-alias-link: #8fa4ff;
+  --dsw-alias-markdown-code-block: #1a1e27;
+  --dsw-alias-markdown-code-block-banner: #212631;
+  --dsw-alias-brand-primary-new-colorprimary-new-color: #4d6bfe;
+  --dsw-specific-input-major: #0e1117;
+  --dsw-specific-selector: #2a303c;
+  --dsw-specific-sidebar-fill: #13161d;
+  --dsw-specific-bubble: #232a3a;
+  --dsh-claude-inline-code-fg: var(--dsw-alias-label-primary);
+  --dsh-claude-link: #8fa4ff;
+  --dsh-claude-link-underline: rgba(143, 164, 255, 0.6);
+  --dsh-claude-link-hover: #b0c0ff;
+  --dsh-claude-logo-ink: #4d6bfe;
+  --dsh-claude-canvas: #13161d;
+  --dsh-claude-sidebar-canvas: #13161d;
+  --dsh-claude-raised: #1b1f28;
+  --dsh-claude-ink-strong: #e9edf6;
+  --dsh-claude-session-ink: #8a91a0;
+  --dsh-claude-table-head: #212631;
+  --dsh-claude-scrollbar: rgba(54, 61, 75, 0.9);
+  --dsh-claude-scrollbar-hover: rgba(104, 112, 128, 0.9);
+}
+
+body[data-dsh-claude-style]:not([data-ds-dark-theme]) {
+  color: var(--dsw-alias-label-primary);
+  background-color: var(--dsh-claude-canvas) !important;
+}
+
+/* The document element sits above the body and cannot read its tokens, so
+   each palette states its canvas here. */
+html:has(body[data-dsh-claude-style]:not([data-ds-dark-theme])) {
+  background-color: #fcfcfb !important;
+}
+
+html:has(body[data-dsh-claude-style][%%BRAND_ATTR%%="%%BRAND_DEEPSEEK%%"]:not([data-ds-dark-theme])) {
+  background-color: #fafbff !important;
+}
+body[data-dsh-claude-style]:not([data-ds-dark-theme]) #root {
+  background-color: var(--dsh-claude-canvas) !important;
+}
+
+body[data-dsh-claude-style]:not([data-ds-dark-theme]) :is([data-pane="sidebar"], [class*="sidebarCol"], .dshDesktopSidebarSurface) {
+  --dsw-specific-sidebar-fill: var(--dsh-claude-sidebar-canvas) !important;
+  background: var(--dsh-claude-sidebar-canvas) !important;
+  border-right: 1px solid var(--dsw-alias-border-l1) !important;
+}
+
+body[data-dsh-claude-style]:not([data-ds-dark-theme]) :is([data-pane="conversation"], [class*="centerCol"]) {
+  background: var(--dsh-claude-canvas) !important;
+}
+
+/* The light half of the anchor ink in theme/chrome.css; both leave a host button
+   class (`_linkButton`) to the ink that class states for itself. */
+body[data-dsh-claude-style]:not([data-ds-dark-theme]) a:not([class*="_linkButton"]) {
+  color: var(--dsw-alias-link);
+}
+
+body[data-dsh-claude-style]:not([data-ds-dark-theme]) a:not([class*="_linkButton"]):hover {
+  color: var(--dsh-claude-link-hover);
+}
+
+body[data-dsh-claude-style]:not([data-ds-dark-theme]) button[class*="_brand"],
+body[data-dsh-claude-style]:not([data-ds-dark-theme]) button[class*="_primary"],
+body[data-dsh-claude-style]:not([data-ds-dark-theme]) [data-slot="sidebar.settings"] > :is(button, [role="button"]) {
+  background: var(--dsw-alias-button-primary-fill);
+  color: #ffffff;
+}
+
+body[data-dsh-claude-style]:not([data-ds-dark-theme]) button[class*="_brand"]:hover,
+body[data-dsh-claude-style]:not([data-ds-dark-theme]) button[class*="_primary"]:hover,
+body[data-dsh-claude-style]:not([data-ds-dark-theme]) [data-slot="sidebar.settings"] > :is(button, [role="button"]):hover {
+  background: var(--dsw-alias-button-primary-hover);
+}
+
+body[data-dsh-claude-style]:not([data-ds-dark-theme]) blockquote {
+  color: var(--dsw-alias-label-secondary);
+  border-left-color: var(--dsw-alias-label-caption);
+  background: rgba(20, 20, 19, 0.04);
+}
+
+body[data-dsh-claude-style]:not([data-ds-dark-theme]) pre {
+  border-color: var(--dsw-alias-border-l1);
+}
+
+
+body[data-dsh-claude-style]:not([data-ds-dark-theme]) * {
+  scrollbar-color: var(--dsh-claude-scrollbar) transparent;
+}
+
+body[data-dsh-claude-style]:not([data-ds-dark-theme]) ::-webkit-scrollbar-thumb {
+  background: var(--dsh-claude-scrollbar);
+}
+
+body[data-dsh-claude-style]:not([data-ds-dark-theme]) ::-webkit-scrollbar-thumb:hover {
+  background: var(--dsh-claude-scrollbar-hover);
+}

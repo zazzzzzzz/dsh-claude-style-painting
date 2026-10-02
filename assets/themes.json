@@ -1,0 +1,157 @@
+{
+  "generatedAt": "2026-10-02",
+  "themes": [
+    {
+      "id": "diana",
+      "name": "Diana · 嘉然",
+      "aspect": 0.7365,
+      "motion": false,
+      "ink": {
+        "berryDark": "#a95f7a",
+        "berryLight": "#b85f7c",
+        "coralDark": "#cc758a",
+        "coralLight": "#cf7f88",
+        "goldDark": "#b99a6a",
+        "goldLight": "#c69a58"
+      },
+      "palette": {
+        "dark": {
+          "surface": "#0d0c0f",
+          "panel": "#171419",
+          "panelStrong": "#1d191f",
+          "sidebar": "#19161a",
+          "ink": "#f3eef0",
+          "muted": "#aaa1a7",
+          "accent": "#d86e91",
+          "accentSoft": "#38242d",
+          "border": "#302930"
+        },
+        "light": {
+          "surface": "#fbf8f6",
+          "panel": "#ffffff",
+          "panelStrong": "#fff8fa",
+          "sidebar": "#f8f3f5",
+          "ink": "#2c2529",
+          "muted": "#74686f",
+          "accent": "#b84970",
+          "accentSoft": "#f2dce3",
+          "border": "#e8dfe2"
+        }
+      },
+      "assets": {
+        "characterDark": "diana/diana-character-night-v3.png",
+        "characterLight": "diana/diana-character-day-v2.png",
+        "doodle": "diana/diana-doodle-v2.png",
+        "upper": "diana/diana-upper-line.png",
+        "corner": "diana/diana-corner-line-v7.png",
+        "star": "diana/diana-star-v2.png",
+        "candyWrapped": "diana/diana-candy-wrapped-v1.png",
+        "candyLollipop": "diana/diana-candy-lollipop-v1.png",
+        "acaoHeart": "diana/diana-acao-heart-v3.png",
+        "acaoCheer": "diana/diana-acao-cheer-v1.png"
+      }
+    },
+    {
+      "id": "c225-line",
+      "name": "红莲：暗影 · c225",
+      "aspect": 0.5028,
+      "motion": true,
+      "ink": {
+        "berryDark": "#cc1f19",
+        "berryLight": "#911c18",
+        "coralDark": "#cc2924",
+        "coralLight": "#cc1f19",
+        "goldDark": "#f2e9e9",
+        "goldLight": "#ca7572"
+      },
+      "palette": {
+        "dark": {
+          "surface": "#0f0c0c",
+          "panel": "#191414",
+          "panelStrong": "#1f1919",
+          "sidebar": "#1a1616",
+          "ink": "#f3eeee",
+          "muted": "#a9a1a1",
+          "accent": "#cc2924",
+          "accentSoft": "#382524",
+          "border": "#2d2626"
+        },
+        "light": {
+          "surface": "#fbf6f6",
+          "panel": "#ffffff",
+          "panelStrong": "#fff8f8",
+          "sidebar": "#f8f3f3",
+          "ink": "#2c2525",
+          "muted": "#7e7171",
+          "accent": "#911c18",
+          "accentSoft": "#f2dddc",
+          "border": "#e8dfdf"
+        }
+      },
+      "assets": {
+        "characterMotion": "c225-line/character-motion.webm",
+        "characterDark": "c225-line/character-still.webp",
+        "characterLight": "c225-line/character-still.webp",
+        "doodle": "c225-line/doodle.png",
+        "upper": "c225-line/upper.png",
+        "corner": "c225-line/corner.png",
+        "star": "c225-line/star.png",
+        "candyWrapped": "c225-line/candy-wrapped.png",
+        "candyLollipop": "c225-line/candy-lollipop.png",
+        "acaoHeart": "c225-line/acao-heart.png",
+        "acaoCheer": "c225-line/acao-cheer.png"
+      }
+    },
+    {
+      "id": "papillon-line",
+      "name": "Papillon · c908",
+      "aspect": 0.9583,
+      "motion": true,
+      "ink": {
+        "berryDark": "#cc196a",
+        "berryLight": "#91184e",
+        "coralDark": "#b62063",
+        "coralLight": "#cc196a",
+        "goldDark": "#f2e9ed",
+        "goldLight": "#ca729a"
+      },
+      "palette": {
+        "dark": {
+          "surface": "#0f0c0d",
+          "panel": "#191416",
+          "panelStrong": "#1f191c",
+          "sidebar": "#1a1618",
+          "ink": "#f3eef0",
+          "muted": "#a9a1a5",
+          "accent": "#b62063",
+          "accentSoft": "#38242d",
+          "border": "#2d2629"
+        },
+        "light": {
+          "surface": "#fbf6f8",
+          "panel": "#ffffff",
+          "panelStrong": "#fff8fb",
+          "sidebar": "#f8f3f5",
+          "ink": "#2c2528",
+          "muted": "#7e7177",
+          "accent": "#91184e",
+          "accentSoft": "#f2dce6",
+          "border": "#e8dfe3"
+        }
+      },
+      "assets": {
+        "characterMotion": "papillon-line/character-motion.webm",
+        "characterDark": "papillon-line/character-still.webp",
+        "characterLight": "papillon-line/character-still.webp",
+        "doodle": "papillon-line/doodle.png",
+        "upper": "papillon-line/upper.png",
+        "corner": "papillon-line/corner.png",
+        "star": "papillon-line/star.png",
+        "candyWrapped": "papillon-line/candy-wrapped.png",
+        "candyLollipop": "papillon-line/candy-lollipop.png",
+        "acaoHeart": "papillon-line/acao-heart.png",
+        "acaoCheer": "papillon-line/acao-cheer.png"
+      }
+    }
+  ]
+}
