@@ -43,6 +43,10 @@
         let applied = null
         /** The motion character's video, while one is mounted. */
         let video = null
+        /** The timer that gives up on that video, and shows its still frame instead. */
+        let videoTimer = 0
+        /** The object URL the motion character plays from, while one is mounted. */
+        let motionUrl = ''
 
         /**
          * `characterDark` reads as `--dsh-claude-art-img-character-dark`.
@@ -103,6 +107,16 @@
             return el
         }
 
+        /** Read one artwork file and hand back a URL a media element can play. */
+        function loadMotion(file) {
+            return fetch(ARTWORK_ASSET_ROUTE + file)
+                .then((response) => {
+                    if (!response.ok) throw new Error(`artwork "${file}" answered ${response.status}`)
+                    return response.blob()
+                })
+                .then((blob) => URL.createObjectURL(blob))
+        }
+
         /**
          * The motion character: a looping video over its own still frame. The
          * still stays the poster, so a browser that cannot decode the video, or
@@ -123,9 +137,34 @@
             if (typeof theme.assets.characterDark === 'string') {
                 element.poster = ARTWORK_ASSET_ROUTE + theme.assets.characterDark
             }
-            element.src = ARTWORK_ASSET_ROUTE + theme.assets.characterMotion
+            /* Frames that arrive hand the node back to the video; until then the
+               still frame the layer carries is what shows. */
+            element.addEventListener('loadeddata', () => { wrapper.classList.add('dsh-claude-art-motion') })
             wrapper.appendChild(element)
             video = element
+            /* The bytes come through fetch rather than through the element's own
+               src: the Desktop window serves the page from its own application
+               scheme, which the media loader does not follow while a same-origin
+               fetch does. The still frame stands in until they are here. */
+            loadMotion(theme.assets.characterMotion)
+                .then((url) => {
+                    if (video !== element) {
+                        URL.revokeObjectURL(url)
+                        return
+                    }
+                    motionUrl = url
+                    element.src = url
+                })
+                .catch((error) => {
+                    console.warn('[dsh-claude-painting] the motion artwork did not load:', error)
+                })
+            /* A scheme that will not stream the file, or a decode this build
+               cannot read, leaves the element with nothing to paint: dropping
+               the motion class shows the still frame instead of an empty box. */
+            videoTimer = window.setTimeout(() => {
+                if (video !== element) return
+                if (element.readyState === 0) wrapper.classList.remove('dsh-claude-art-motion')
+            }, 8000)
             return wrapper
         }
 
@@ -142,6 +181,14 @@
         /** Take the layer down and hand the canvas back. */
         function detach() {
             if (layer === null) return
+            if (videoTimer !== 0) {
+                window.clearTimeout(videoTimer)
+                videoTimer = 0
+            }
+            if (motionUrl !== '') {
+                URL.revokeObjectURL(motionUrl)
+                motionUrl = ''
+            }
             if (video !== null) {
                 video.pause()
                 video.removeAttribute('src')
@@ -161,6 +208,11 @@
             document.body.appendChild(el)
             layer = el
             applied = theme
+            /* A fresh layer carries none of the geometry the previous one had,
+               so the reading it was written from has to fall with it: leaving
+               it made the next pass see the same rectangle, write nothing, and
+               the new layer collapsed to nothing until the column resized. */
+            geometry = ''
             document.body.setAttribute(ARTWORK_ATTR, theme.id)
             writePalette(theme)
         }
@@ -318,6 +370,11 @@
         function sync() {
             const theme = wantedTheme()
             if (theme === null) {
+                /* No table yet is "the manifest has not answered", not "no such
+                   character": tearing the layer down here blanked the artwork
+                   for as long as the fetch took — and for good when the reader
+                   had a character stored and the fetch never landed. */
+                if (table.length === 0) return
                 detach()
                 return
             }
