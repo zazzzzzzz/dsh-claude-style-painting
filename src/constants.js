@@ -282,16 +282,6 @@
     const ARTWORK_ID_MAX = 64
     /** The character the skin draws when the stored preference names none. */
     const DEFAULT_ARTWORK = 'diana'
-    /**
-     * The band reserved at the window's bottom for the composer, in pixels.
-     *
-     * Every page lays the artwork out against this one line: the drawings keep
-     * the same place on a page with a composer and on one without, and they do
-     * not shift when the composer grows. It is a fixed reserve rather than the
-     * composer's measured height for exactly that reason — a measured one moved
-     * the whole layer whenever the input box resized.
-     */
-    const ARTWORK_FLOOR = 96
 
     /** Present while the skin takes over the sidebar footer (settings area + account row). */
     const FOOTER_ATTR = 'data-dsh-claude-footer-takeover'

@@ -297,13 +297,9 @@
                 if (video !== null && !video.paused) video.pause()
                 return
             }
-            /* One fixed line for every page: the composer sits in the reserved
-               band, and the drawings never move because of it. */
-            const drop = ARTWORK_FLOOR
             const next = [Math.round(rect.left), Math.round(rect.top), Math.round(rect.width), Math.round(rect.height)].join(',')
             if (next !== geometry) {
                 geometry = next
-                layer.style.setProperty('--dsh-claude-art-drop', drop + 'px')
                 layer.style.setProperty('--dsh-claude-art-wl', Math.round(rect.left) + 'px')
                 layer.style.setProperty('--dsh-claude-art-wt', Math.round(rect.top) + 'px')
                 layer.style.setProperty('--dsh-claude-art-ww', Math.round(rect.width) + 'px')
