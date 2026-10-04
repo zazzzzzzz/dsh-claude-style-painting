@@ -87,7 +87,10 @@ body[data-dsh-claude-style] .dsh-claude-home-heat-cell[data-tip]:hover::after {
   padding: 5px 10px;
   border-radius: 8px;
   background: var(--dsw-alias-label-primary, #141413);
-  color: var(--dsw-alias-bg-base, #fcfcfb);
+  /* The pill inverts the page, so its ink is the canvas tone — the skin's own
+     token, never the base surface token: the artwork layer clears that one to
+     let the canvas through, and an ink read from it came out transparent. */
+  color: var(--dsh-claude-canvas, #fcfcfb);
   font-size: 13px;
   font-weight: 500;
   line-height: 18px;
