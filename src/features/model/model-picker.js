@@ -93,18 +93,20 @@
         }
       }
 
+      /** True while the tracked pointer sits within one card's box, with the same
+       *  8px band of desktop around it that covers the sliver of gap between the
+       *  two cards. */
+      function pointerInCardBox(card) {
+        if (pointer === null || card === null) return false
+        if (card.getAttribute('data-open') !== 'true') return false
+        const box = card.getBoundingClientRect()
+        return pointer.x >= box.left - 8 && pointer.x <= box.right + 8 &&
+               pointer.y >= box.top - 8 && pointer.y <= box.bottom + 8
+      }
+
       /** True while the pointer sits in either card, or in the gap between them. */
       function pointerInPicker() {
-        if (pointer === null) return false
-        const cards = [modelPop, modelSubPop]
-        for (let i = 0; i < cards.length; i++) {
-          const card = cards[i]
-          if (card === null || card.getAttribute('data-open') !== 'true') continue
-          const box = card.getBoundingClientRect()
-          if (pointer.x >= box.left - 8 && pointer.x <= box.right + 8 &&
-              pointer.y >= box.top - 8 && pointer.y <= box.bottom + 8) return true
-        }
-        return false
+        return pointerInCardBox(modelPop) || pointerInCardBox(modelSubPop)
       }
 
       /** Close on leave, but treat the gap between the two cards as still inside. */
@@ -146,8 +148,11 @@
       function openModelSub() {
         cancelCloseModel()
         renderModelSub()
-        positionModelPopovers()
+        // Open BEFORE placing: the placement pass reads the sub card only while
+        // it is marked open, so positioning first would skip it and leave the
+        // card at its previous position — every open has to place it fresh.
         if (modelSubPop) setMenuPopoverOpen(modelSubPop, true)
+        positionModelPopovers()
       }
 
       function pickModel(provider, modelId) {
@@ -167,7 +172,7 @@
         const snap = modelCatalog.snapshot()
         if (dir === null || !snap || snap.current === null) return
         const selection = { provider: snap.current.provider, model: snap.current.model }
-        if (effort !== void 0) selection.reasoningEffort = effort
+        if (effort !== undefined) selection.reasoningEffort = effort
         // A rejected selection is reported by the host's toast (see pickModel).
         const pending = dir.select(selection)
         if (pending && typeof pending.catch === 'function') pending.catch(() => {})
@@ -265,7 +270,7 @@
             if (currentDesc) currentCopy.appendChild(buildElement('span', 'dsh-claude-model-desc', currentDesc))
             currentRow.appendChild(currentCopy)
             const currentCheck = buildElement('span', 'dsh-claude-popover-check')
-            currentCheck.innerHTML = MODEL_CHECK_SVG
+            currentCheck.innerHTML = POPOVER_CHECK_SVG
             currentRow.appendChild(currentCheck)
             currentRow.addEventListener('click', e => {
               e.stopPropagation()
@@ -368,7 +373,6 @@
         // Rebuilding also re-points the body/footer children and resets the
         // render signatures so the next pass repaints into the fresh nodes.
         if (modelPop === null || modelPop.parentElement === null) {
-          if (modelPop !== null && modelPop.parentElement !== null) modelPop.parentElement.removeChild(modelPop)
           modelPop = document.createElement('div')
           modelPop.className = 'dsh-claude-popover-card dsh-claude-model-popover'
           setMenuPopoverOpen(modelPop, false)
@@ -392,12 +396,14 @@
             // Delayed, not immediate: the sub card sits BESIDE level 1, so a
             // pointer on its way from the cell to the sub crosses level 1's own
             // rows — folding on the spot made that journey impossible at any
-            // speed. Folding now waits out the same grace, and stands down if the
-            // pointer has meanwhile reached either card.
+            // speed. Folding now waits out the same grace, and stands down only
+            // when the pointer has meanwhile reached the sub card itself: the
+            // pointer still being on level 1 means it left the More-models cell,
+            // which is exactly when level 2 folds.
             if (subFoldTimer !== null) clearTimeout(subFoldTimer)
             subFoldTimer = setTimeout(() => {
               subFoldTimer = null
-              if (pointerInPicker()) return
+              if (pointerInCardBox(modelSubPop)) return
               if (modelSubPop !== null) setMenuPopoverOpen(modelSubPop, false)
             }, MODEL_CLOSE_DELAY)
           })
@@ -406,7 +412,6 @@
           modelBodySig = ''
         }
         if (modelSubPop === null || modelSubPop.parentElement === null) {
-          if (modelSubPop !== null && modelSubPop.parentElement !== null) modelSubPop.parentElement.removeChild(modelSubPop)
           modelSubPop = document.createElement('div')
           modelSubPop.className = 'dsh-claude-popover-card dsh-claude-model-popover dsh-claude-model-popover-sub'
           setMenuPopoverOpen(modelSubPop, false)
@@ -469,9 +474,7 @@
         removeStrayNodes(slot, '.dsh-claude-model-btn', [modelBtn])
         removeStrayNodes(document, 'body > .dsh-claude-model-popover', [modelPop, modelSubPop])
         const hostRoot = slot.firstElementChild
-        if (hostRoot !== null && !hostRoot.hasAttribute('data-dsh-claude-model-host')) {
-          hostRoot.setAttribute('data-dsh-claude-model-host', '')
-        }
+        if (hostRoot !== null) hostRoot.toggleAttribute('data-dsh-claude-model-host', true)
         if (modelBtn === null || modelBtn.parentElement !== slot) {
           if (modelBtn !== null && modelBtn.parentElement !== null) modelBtn.parentElement.removeChild(modelBtn)
           modelBtn = document.createElement('button')
@@ -523,7 +526,7 @@
         const staleEffortEl = modelBtn.querySelector('.dsh-claude-model-btn-effort')
         if (staleEffortEl !== null) staleEffortEl.parentElement.removeChild(staleEffortEl)
         const triggerAria = copyLabel('triggerLabel', MODEL_TRIGGER_LABEL, { model: label })
-        if (modelBtn.getAttribute('aria-label') !== triggerAria) modelBtn.setAttribute('aria-label', triggerAria)
+        setAttributeIfChanged(modelBtn, 'aria-label', triggerAria)
         modelBtn.disabled = false
 
         renderModelBody()

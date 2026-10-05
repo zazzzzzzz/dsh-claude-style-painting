@@ -365,8 +365,8 @@
         return greetSpan.textContent
       }
       r.greeting = { low: await arrive(0) }
-      // The crab belongs to the studio home page alone.
-      r.classicCrab = document.querySelector('.dsh-claude-mascot') !== null
+      // The crab stands on the classic home page's card too, as Deepy does.
+      r.classicCrab = document.querySelector('[data-composer-card] > .dsh-claude-crab') !== null
       document.body.appendChild(document.createElement('i'))
       await sleep(150)
       r.greeting.held = greetSpan.textContent
@@ -514,6 +514,23 @@
       if (statsMeter !== null) statsMeter.dispatchEvent(new MouseEvent('mouseleave'))
       await sleep(500)
       r.context.closedAfterLeave = document.querySelector('.dsh-claude-context-stats') === null
+      // The room the skin keeps for the meter is what holds the model trigger
+      // clear of the ring. A pass that measures the meter with no box — the seat
+      // is display: none while another conversation tab is up — is no reading,
+      // so the row keeps its room and the pass after the box returns measures
+      // again. Taking the room away here left the trigger under the ring until
+      // the reading itself moved.
+      r.context.roomBefore = document.body.style.getPropertyValue('--dsh-claude-meter-room')
+      // The host rewrites the reading beside the ring (ContextMeter's `<span>`).
+      var meterReading = statsMeter === null ? null : statsMeter.querySelector('button > span')
+      if (statsMeter !== null) statsMeter.style.display = 'none'
+      if (meterReading !== null) meterReading.textContent = meterReading.textContent === '43%' ? '44%' : '43%'
+      statsCard.appendChild(document.createElement('span'))
+      await sleep(400)
+      if (statsMeter !== null) statsMeter.style.display = ''
+      statsCard.appendChild(document.createElement('span'))
+      await sleep(400)
+      r.context.roomAfter = document.body.style.getPropertyValue('--dsh-claude-meter-room')
     }
     var drawer = document.querySelector('.dsh-claude-account-popover-body')
     r.drawer = drawer ? Array.prototype.map.call(drawer.children, function (c) {
@@ -577,8 +594,31 @@
     r.footerTakeover = document.body.hasAttribute('data-dsh-claude-footer-takeover')
     r.homeLayoutAttr = document.body.getAttribute('data-dsh-claude-home-layout')
     r.homeLayoutExpected = window.SMOKE_CASE === 'studio' ? 'studio' : null
-    r.slotRegistrations = window.__slots || null
+    // A copy, not the live list: the teardown at the end of this run hands every
+    // registration back, and what this check is about is what was registered
+    // while the page was up.
+    r.slotRegistrations = window.__slots ? window.__slots.map(function (entry) { return Object.assign({}, entry) }) : null
     r.composerRestyle = document.body.hasAttribute('data-dsh-claude-composer-active')
+    // The host's model seat inside an inline card, with a menu another plugin
+    // nests in it (its hashed class says "model"). Read and removed within one
+    // task, so no skin pass ever sees it: the trigger rule must reach the
+    // host's trigger, leave the nested menu its block layout, and leave the
+    // seat root hidden once the picker marks it.
+    var modelCard = document.createElement('div')
+    modelCard.setAttribute('data-composer-card', '')
+    modelCard.setAttribute('data-composer-variant', 'inline')
+    modelCard.innerHTML = '<div class="_x_trailing_2"><div data-slot="conversation.input.model" style="display:contents">' +
+      '<div class="_m_root_1"><button type="button" class="_m_trigger_1">model-a</button>' +
+      '<div class="_m_menu_1"><div class="_p_providerModelMenu_1"></div></div></div></div></div>'
+    document.body.appendChild(modelCard)
+    var modelSeatRoot = modelCard.querySelector('._m_root_1')
+    r.modelSeat = {
+      trigger: getComputedStyle(modelCard.querySelector('._m_trigger_1')).display,
+      nestedMenu: getComputedStyle(modelCard.querySelector('._p_providerModelMenu_1')).display,
+    }
+    modelSeatRoot.setAttribute('data-dsh-claude-model-host', '')
+    r.modelSeat.markedRoot = getComputedStyle(modelSeatRoot).display
+    modelCard.remove()
     if (window.SMOKE_CASE === 'studio') {
       // Render the registered panel on the hero page, once per tab, the way
       // the dock seat would: a throw here is the slot's error boundary on the
@@ -626,50 +666,51 @@
           react.states = null
         }
       }
-      // The crab rides the hero card, drawn from the two inlined strips. The
-      // pointer leaving it starts the routine: under half a second in it is
-      // blinking, off the resting frame, and past the routine's 3.44 seconds it
-      // rests again — and no frame of it wakes a pass. The wait is the routine's
-      // own duration plus a quarter, not a race: timer callbacks run late on a
-      // loaded machine, and a margin of a few hundred milliseconds read a crab
-      // still mid-routine as one that never came back to rest.
-      var mascot = document.querySelector('[data-composer-card] > .dsh-claude-mascot')
-      var mascotFrame = function () { return mascot.style.getPropertyValue('--dsh-claude-mascot-frame') }
-      r.mascot = { mounted: mascot !== null }
-      if (mascot !== null) {
-        var mascotBody = mascot.querySelector('.dsh-claude-mascot-body')
-        var mascotRod = mascot.querySelector('.dsh-claude-mascot-rod')
-        r.mascot.frame = mascotFrame()
-        r.mascot.body = getComputedStyle(mascotBody).backgroundImage.indexOf('data:image/png') !== -1
-        r.mascot.rod = getComputedStyle(mascotRod).maskImage.indexOf('data:image/png') !== -1
-        r.mascot.bodyShift = getComputedStyle(mascotBody).backgroundPositionX
+      // The crab rides the hero card, idling, drawn from its inlined sheet and
+      // ink mask. A click on its left half pokes it, and the poke plays out
+      // back to idle on the browser's animation engine, so no frame wakes a
+      // pass. With the animation choice on "reduced" it holds the idle
+      // sheet's still frame; a click still plays the poke.
+      var crab = document.querySelector('[data-composer-card] > .dsh-claude-crab')
+      r.mascot = { mounted: crab !== null }
+      if (crab !== null) {
+        var crabStrip = crab.querySelector('.dsh-claude-crab-strip')
+        var crabHit = crab.querySelector('.dsh-claude-crab-hit')
+        r.mascot.ready = crab.hasAttribute('data-ready')
+        r.mascot.animation = crab.getAttribute('data-animation')
+        r.mascot.body = getComputedStyle(crabStrip).backgroundImage.indexOf('data:image/png') !== -1
+        r.mascot.ink = getComputedStyle(crabStrip, '::after').maskImage.indexOf('data:image/png') !== -1
         // A real press has to reach the crab: nothing on the page may cover it.
-        mascot.scrollIntoView({ block: 'center' })
-        var hitBox = mascot.querySelector('.dsh-claude-mascot-hit').getBoundingClientRect()
-        var topmost = document.elementFromPoint(hitBox.left + hitBox.width / 2, hitBox.top + hitBox.height / 2)
-        r.mascot.reachable = topmost !== null && topmost.classList.contains('dsh-claude-mascot-hit')
+        crab.scrollIntoView({ block: 'center' })
+        var crabBox = crabHit.getBoundingClientRect()
+        var topmost = document.elementFromPoint(crabBox.left + crabBox.width / 2, crabBox.top + crabBox.height / 2)
+        r.mascot.reachable = topmost === crabHit
+        var crabPress = { pointerId: 1, pointerType: 'mouse', isPrimary: true, button: 0, clientX: crabBox.left + 6, clientY: crabBox.top + crabBox.height / 2, bubbles: true }
+        var pokeCrab = function () {
+          crabHit.dispatchEvent(new PointerEvent('pointerdown', Object.assign({ buttons: 1 }, crabPress)))
+          crabHit.dispatchEvent(new PointerEvent('pointerup', Object.assign({ buttons: 0 }, crabPress)))
+        }
+        // The press settles focus (and the caret motion's own frames with it),
+        // so the count starts once that is over: what is measured is the poke's
+        // animation running on the browser's engine.
+        pokeCrab()
+        await sleep(300)
+        r.mascot.poked = crab.getAttribute('data-animation')
         var passesBefore = window.__passes
-        mascot.querySelector('.dsh-claude-mascot-hit').dispatchEvent(new PointerEvent('pointerleave'))
-        await sleep(450)
-        r.mascot.early = mascotFrame()
-        r.mascot.earlyShift = getComputedStyle(mascotBody).backgroundPositionX
-        await sleep(4300)
-        r.mascot.settled = mascotFrame()
+        await sleep(1150)
+        r.mascot.afterPoke = crab.getAttribute('data-animation')
         r.mascot.passesDuring = window.__passes - passesBefore
-        // With the animation choice set to "reduced" the pointer passing by
-        // leaves it still, and a click still plays it. The choice is pushed
-        // through the host form, which is what the settings row does.
+        // The choice is pushed through the host form, which is what the
+        // settings row does.
         window.__pushForm({ motion: 'reduced' })
         await sleep(150)
         r.mascot.reducedAttr = document.body.getAttribute('data-dsh-claude-motion')
-        mascot.querySelector('.dsh-claude-mascot-hit').dispatchEvent(new PointerEvent('pointerleave'))
-        await sleep(450)
-        r.mascot.reducedLeave = mascotFrame()
-        mascot.querySelector('.dsh-claude-mascot-hit').dispatchEvent(new MouseEvent('click', { bubbles: true }))
-        await sleep(450)
-        r.mascot.clicked = mascotFrame()
-        await sleep(4300)
-        r.mascot.clickSettled = mascotFrame()
+        r.mascot.stillFrame = crabStrip.style.transform
+        r.mascot.stillAnimations = crabStrip.getAnimations().length
+        pokeCrab()
+        await sleep(150)
+        r.mascot.reducedClick = crab.getAttribute('data-animation')
+        await sleep(1300)
         window.__pushForm({ motion: 'full' })
       }
       // The cold start screen: no session yet, so the host renders no dock
@@ -719,7 +760,7 @@
       heroRoot.remove()
       await sleep(200)
       r.homeHero.offHero = document.body.hasAttribute('data-dsh-claude-home-hero')
-      r.mascot.afterHero = document.querySelector('.dsh-claude-mascot') !== null
+      r.mascot.afterHero = document.querySelector('.dsh-claude-crab') !== null
       // The stylesheet alone decides where a panel may draw: under the hero
       // stack's dock it shows, and the moment the host drops the stack's hero
       // class (the first message sent) it is gone, before any pass runs.
@@ -810,7 +851,8 @@
     // the failed turn has its error and its footer, and a queued message
     // follows the running turn. Each status line has to show below its turn's
     // work, above what follows.
-    if (window.SMOKE_CASE === 'turn-status') {
+    var switchCase = window.SMOKE_CASE === 'switches' || window.SMOKE_CASE === 'switches-off'
+    if (window.SMOKE_CASE === 'turn-status' || switchCase) {
       var chatSession = document.createElement('div')
       chatSession.setAttribute('data-conversation-session', 'smoke-session')
       chatSession.innerHTML = '<div data-chat-flow="" style="display:flex;flex-direction:column">' +
@@ -845,25 +887,189 @@
         live: lineOf(statusButtons[1]),
       }
     }
+    // The feature switches: each switched feature's own marks on the page,
+    // read after a preference write and a pass. Off has to leave none of a
+    // feature's marks (its teardown handed the surface back); on brings them
+    // back, live, without touching the others.
+    if (switchCase) {
+      // The host surfaces the three sidebar and header features take over:
+      // the brand row (search), the workspace section with its tree
+      // (workspace view) and the conversation's view-tab strip.
+      var switchSidebar = document.createElement('div')
+      switchSidebar.setAttribute('data-slot', 'sidebar')
+      switchSidebar.innerHTML = '<div class="_n_root_1"><div class="_n_logoRow_1" data-window-drag="true">' +
+        '<button type="button" class="_n_brand_1 _n_wide_1" aria-label="New session">brand</button>' +
+        '<button type="button" class="_n_iconButton_1 _n_toggle_1" aria-label="Collapse sidebar">toggle</button></div>' +
+        // One hash prefix for the section, its header, its label and its list
+        // area, the way the host's CSS modules name them (the skin finds the
+        // workspace section by that shared prefix, never by the label text).
+        '<div class="_w1_root"><div class="_w1_sectionHeader"><span class="_w1_sectionLabel _w1_wide">Workspaces</span></div>' +
+        '<div role="tree" class="_w1_listArea"><div data-row-key="w1" class="_w1_projectRow">project</div></div></div></div>'
+      document.body.appendChild(switchSidebar)
+      var switchHeader = document.createElement('div')
+      switchHeader.className = '_c_header_1'
+      switchHeader.innerHTML = '<div class="_c_tabs_1" role="tablist" data-conversation-tabs="">' +
+        '<button type="button" role="tab" aria-selected="true" class="_c_tab_1 _c_tabActive_1">Chat</button>' +
+        '<button type="button" role="tab" aria-selected="false" class="_c_tab_1">Trajectory</button></div>'
+      document.body.appendChild(switchHeader)
+      var switchMarks = function () {
+        return {
+          // The permission control and the context statistics switch together.
+          permissionsControl: document.querySelectorAll('.dsh-claude-perm-container').length +
+            (document.body.hasAttribute('data-dsh-claude-permissions') ? 1 : 0) +
+            (document.body.hasAttribute('data-dsh-claude-session-stats') ? 1 : 0),
+          workspaceView: document.querySelectorAll('.dsh-claude-ws-segments').length,
+          sidebarSearch: document.querySelectorAll('[data-dsh-claude-search-row], .dsh-claude-search-trigger').length,
+          turnStatus: document.querySelectorAll('[data-dsh-claude-turn-status], [style*="--dsh-claude-turn-order"]').length,
+          viewTabs: document.querySelectorAll('[data-dsh-view-tabs]').length,
+        }
+      }
+      var settleSwitch = async function (patch) {
+        window.__pushForm(patch)
+        document.body.appendChild(document.createElement('i'))
+        await sleep(300)
+        return switchMarks()
+      }
+      var switchKeys = ['permissionsControl', 'workspaceView', 'sidebarSearch', 'turnStatus', 'viewTabs']
+      // The sixth switched feature, the file change rows, takes seat keys over
+      // rather than drawing marks on the page, so its switch is driven and
+      // checked in its own case ('chat-files': offSeats/backSeats).
+      var allSwitches = function (value) {
+        var patch = {}
+        for (var ki = 0; ki < switchKeys.length; ki++) patch[switchKeys[ki]] = value
+        return patch
+      }
+      await sleep(300)
+      r.switches = { start: switchMarks(), steps: [] }
+      if (window.SMOKE_CASE === 'switches') {
+        for (var si = 0; si < switchKeys.length; si++) {
+          var offPatch = {}
+          offPatch[switchKeys[si]] = false
+          var off = await settleSwitch(offPatch)
+          var onPatch = {}
+          onPatch[switchKeys[si]] = true
+          var on = await settleSwitch(onPatch)
+          r.switches.steps.push({ key: switchKeys[si], off: off, on: on })
+        }
+        r.switches.allOff = await settleSwitch(allSwitches(false))
+      }
+      r.switches.allOn = await settleSwitch(allSwitches(true))
+    }
+    // Following the host's colours and type: with the host's palette in the
+    // page, the skin writes none of the host's tokens, paints none of the
+    // host's frame, and its own surfaces read the host's tokens; a wallpaper
+    // plugin's cleared canvas and glass then reach both. Back on Claude the
+    // skin's own palette returns.
+    if (window.SMOKE_CASE === 'host-palette') {
+      var hostProbe = function (html) {
+        var holder = document.createElement('div')
+        holder.innerHTML = html
+        document.body.appendChild(holder.firstChild)
+        return document.body.lastChild
+      }
+      var hostNodes = {
+        sidebar: hostProbe('<div data-pane="sidebar">s</div>'),
+        conversation: hostProbe('<div data-pane="conversation">c</div>'),
+        popover: hostProbe('<div class="dsh-claude-popover-card" data-open="true">p</div>'),
+        search: hostProbe('<div class="dsh-claude-search-dialog">q</div>'),
+        group: hostProbe('<span class="dsh-claude-model-group">g</span>'),
+        heading: hostProbe('<h1>h</h1>'),
+        code: hostProbe('<pre><code>c</code></pre>'),
+      }
+      var readHost = async function (patch, wallpaper) {
+        if (patch !== null) window.__pushForm(patch)
+        if (wallpaper) document.body.setAttribute('data-we-wallpaper', '')
+        else document.body.removeAttribute('data-we-wallpaper')
+        await sleep(120)
+        var bodyStyle = getComputedStyle(document.body)
+        return {
+          base: bodyStyle.getPropertyValue('--dsw-alias-bg-base').trim(),
+          family: bodyStyle.getPropertyValue('--dsw-font-family').trim(),
+          body: bodyStyle.backgroundColor,
+          html: getComputedStyle(document.documentElement).backgroundColor,
+          sidebar: getComputedStyle(hostNodes.sidebar).backgroundColor,
+          conversation: getComputedStyle(hostNodes.conversation).backgroundColor,
+          popover: getComputedStyle(hostNodes.popover).backgroundColor,
+          popoverBlur: getComputedStyle(hostNodes.popover).backdropFilter,
+          // The account drawer the footer feature built (it sweeps any other copy).
+          account: getComputedStyle(document.querySelector('.dsh-claude-account-popover')).backgroundColor,
+          search: getComputedStyle(hostNodes.search).backgroundColor,
+          group: getComputedStyle(hostNodes.group).backgroundColor,
+          groupInk: getComputedStyle(hostNodes.group).color,
+          heading: getComputedStyle(hostNodes.heading).fontFamily,
+          code: getComputedStyle(hostNodes.code.firstChild).fontFamily,
+        }
+      }
+      await sleep(300)
+      r.hostPalette = {
+        host: await readHost({ palette: 'host', typeface: 'host' }, false),
+        wallpaper: await readHost(null, true),
+        claude: await readHost({ palette: 'claude', typeface: 'claude' }, false),
+      }
+      for (var hostKey in hostNodes) hostNodes[hostKey].remove()
+    }
+    // The settings page, rendered through the stand-in React into a plain tree:
+    // the tab strip, which rows each tab carries, and the sub-rows that grey
+    // out while their parent is off. A tab is opened by standing the tab state
+    // in for a click (the stand-in's `states`).
+    if (window.SMOKE_CASE === 'settings') {
+      var Section = (window.__slotComponents || {})['claude-style']
+      var walk = function (node, visit) {
+        if (node === null || node === undefined || typeof node !== 'object') return
+        if (Array.isArray(node)) { node.forEach(function (child) { walk(child, visit) }); return }
+        visit(node)
+        walk(node.props && node.props.children, visit)
+      }
+      var renderTab = function (tabId) {
+        var react = window.__react
+        react.rendering = true
+        react.states = tabId === 'general' ? null : { general: tabId }
+        var tree = Section({})
+        react.rendering = false
+        react.states = null
+        var out = { tabs: [], selected: null, rows: [], disabled: [] }
+        walk(tree, function (node) {
+          var props = node.props || {}
+          if (props.role === 'tab') {
+            out.tabs.push(props.key)
+            if (props['aria-selected'] === 'true') out.selected = props.key
+          }
+          if (typeof props.className === 'string' && /(^| )dsh-claude-settings-row( |$)/.test(props.className)) {
+            out.rows.push(props.key)
+            if (props['data-disabled'] === '') out.disabled.push(props.key)
+          }
+        })
+        return out
+      }
+      r.settings = { registered: typeof Section === 'function', pages: {} }
+      if (r.settings.registered) {
+        var tabIds = ['general', 'appearance', 'composer', 'sidebar', 'conversation']
+        for (var ti = 0; ti < tabIds.length; ti++) r.settings.pages[tabIds[ti]] = renderTab(tabIds[ti])
+        window.__pushForm({ modelPicker: false, mascot: 'off' })
+        r.settings.parentsOff = { appearance: renderTab('appearance'), composer: renderTab('composer') }
+        window.__pushForm({ modelPicker: true, mascot: 'brand' })
+      }
+    }
     // The DeepSeek brand, stored under its old name ("off"): the whale takes
     // the crab's place and the canvas turns sky white. On the home page it
     // stands on the card; on the conversation page it follows the session's
     // work from the top of the input area, and stands on the panel that takes
     // the card's place while the reader is asked for something.
-    if (window.SMOKE_CASE === 'deepy') {
+    if (window.SMOKE_CASE === 'deepy' || window.SMOKE_CASE === 'crab-states') {
+      var mascotName = window.SMOKE_CASE === 'deepy' ? 'deepy' : 'crab'
       var driver = window.__deepy
       var whaleNow = function () {
-        var node = document.querySelector('.dsh-claude-deepy')
+        var node = document.querySelector('.dsh-claude-' + mascotName)
         if (node === null) return null
         // The frame is the strip's translation: read the computed matrix (a
         // running WAAPI animation has no inline style) as "Xpx Ypx".
-        var strip = node.querySelector('.dsh-claude-deepy-strip')
+        var strip = node.querySelector('.dsh-claude-' + mascotName + '-strip')
         var matrix = getComputedStyle(strip).transform
         var offsets = matrix === 'none' ? null : matrix.match(/matrix\([^,]+,[^,]+,[^,]+,[^,]+,\s*(-?[\d.]+),\s*(-?[\d.]+)\)/)
         return {
           animation: node.getAttribute('data-animation'),
           ready: node.hasAttribute('data-ready'),
-          place: node.parentElement === null ? null : node.parentElement.getAttribute('data-dsh-claude-deepy-anchor'),
+          place: node.parentElement === null ? null : node.parentElement.getAttribute('data-dsh-claude-' + mascotName + '-anchor'),
           frame: offsets === null ? '0px 0px' : offsets[1] + 'px ' + offsets[2] + 'px',
           sheet: getComputedStyle(strip).backgroundImage,
         }
@@ -874,7 +1080,7 @@
         document.body.removeChild(node)
       }
       var bodyStyle = getComputedStyle(document.body)
-      r.deepy = {
+      r.states = {
         brand: document.body.getAttribute('data-dsh-claude-brand'),
         canvas: bodyStyle.backgroundColor,
         accent: bodyStyle.getPropertyValue('--dsw-alias-brand-primary').trim(),
@@ -883,7 +1089,7 @@
       // The dark palette, read with the host's dark marker set for a moment.
       document.body.setAttribute('data-ds-dark-theme', '')
       var darkStyle = getComputedStyle(document.body)
-      r.deepy.dark = {
+      r.states.dark = {
         canvas: darkStyle.backgroundColor,
         accent: darkStyle.getPropertyValue('--dsw-alias-brand-primary').trim(),
         raised: darkStyle.getPropertyValue('--dsh-claude-raised').trim(),
@@ -893,20 +1099,23 @@
       deepyHero.setAttribute('data-phase', 'hero')
       document.body.appendChild(deepyHero)
       await sleep(500)
-      r.deepy.home = whaleNow()
-      r.deepy.crab = document.querySelector('.dsh-claude-mascot') !== null
-      // Frames change on the whale's own node, and no frame wakes a pass.
+      r.states.home = whaleNow()
+      r.states.crab = document.querySelector('.dsh-claude-crab') !== null
+      // Frames change on the whale's own node, and no frame wakes a pass. The
+      // caret motion's own frames are settled first (see the crab case).
+      if (document.activeElement instanceof HTMLElement) document.activeElement.blur()
+      await sleep(250)
       var deepyPasses = window.__passes
       await sleep(600)
-      r.deepy.idle = { before: r.deepy.home && r.deepy.home.frame, after: whaleNow().frame, passes: window.__passes - deepyPasses }
+      r.states.idle = { before: r.states.home && r.states.home.frame, after: whaleNow().frame, passes: window.__passes - deepyPasses }
       // A click on its face pokes it.
-      var hit = document.querySelector('.dsh-claude-deepy-hit')
+      var hit = document.querySelector('.dsh-claude-' + mascotName + '-hit')
       var hitBox = hit.getBoundingClientRect()
       var press = { pointerId: 1, pointerType: 'mouse', isPrimary: true, button: 0, clientX: hitBox.left + 6, clientY: hitBox.top + hitBox.height / 2, bubbles: true }
       hit.dispatchEvent(new PointerEvent('pointerdown', Object.assign({ buttons: 1 }, press)))
       hit.dispatchEvent(new PointerEvent('pointerup', Object.assign({ buttons: 0 }, press)))
       await sleep(250)
-      r.deepy.poke = whaleNow()
+      r.states.poke = whaleNow()
       // The poke plays out (2s) before the page moves on.
       await sleep(1900)
       deepyHero.remove()
@@ -926,19 +1135,19 @@
       driver.setTurn('reasoning')
       wakeDeepyPass()
       await sleep(400)
-      r.deepy.thinking = whaleNow()
-      r.deepy.chatFollowed = driver.chatFollowed()
+      r.states.thinking = whaleNow()
+      r.states.chatFollowed = driver.chatFollowed()
       driver.setTurn('text')
       wakeDeepyPass()
       await sleep(250)
-      r.deepy.typing = whaleNow()
+      r.states.typing = whaleNow()
       // Two more sessions at work: the hard hat, once the typing whale has
       // held the stage for its second.
       driver.addSessions(['smoke-two', 'smoke-three'])
       driver.setStatus('smoke-two', { running: true })
       driver.setStatus('smoke-three', { running: true })
       await sleep(1300)
-      r.deepy.building = whaleNow()
+      r.states.building = whaleNow()
       // An approval: the host hides the composer and mounts its panel after it.
       var fallback = deepyConversation.querySelector('[data-chain-overlay-fallback]')
       var panel = document.createElement('div')
@@ -948,7 +1157,7 @@
       fallback.parentElement.appendChild(panel)
       driver.setStatus('smoke-deepy', { running: true, pendingInteraction: { kind: 'approval', key: 'smoke' } })
       await sleep(400)
-      r.deepy.notification = whaleNow()
+      r.states.notification = whaleNow()
       // Answered and finished; a compaction starts, then ends.
       panel.remove()
       fallback.style.display = 'contents'
@@ -960,37 +1169,37 @@
       wakeDeepyPass()
       // Each state holds the stage for a second against a lesser one.
       await sleep(1100)
-      r.deepy.compacting = whaleNow()
+      r.states.compacting = whaleNow()
       await sleep(100)
       driver.emit({ type: 'compaction/end', seq: 2, time: Date.now(), data: { compactionId: 'c1', turn: null } })
       // The celebration's sheet converts on its first use (one of the biggest
       // sheets); the switch holds the current animation until the vector is
       // ready, so wait it out instead of landing on a fixed delay.
       for (var ci = 0; ci < 60 && (whaleNow() || {}).animation !== 'happy'; ci++) await sleep(50)
-      r.deepy.celebrating = whaleNow()
+      r.states.celebrating = whaleNow()
       driver.emit({ type: 'tool/result', seq: 3, time: Date.now(), data: { turn: 2, step: 1, message: { isError: true } } })
       await sleep(400)
-      r.deepy.failed = whaleNow()
+      r.states.failed = whaleNow()
       // Reduced motion: the settings page's animation choice, pushed through the
       // host form the way the settings row writes it. The choice resolves onto
       // <body> (src/core/prefs.js) and the whale holds the state's still frame.
       window.__pushForm({ motion: 'reduced' })
       await sleep(150)
-      r.deepy.stillAttr = document.body.getAttribute('data-dsh-claude-motion')
+      r.states.stillAttr = document.body.getAttribute('data-dsh-claude-motion')
       var stillBefore = whaleNow().frame
       await sleep(400)
-      r.deepy.still = { before: stillBefore, after: whaleNow().frame }
+      r.states.still = { before: stillBefore, after: whaleNow().frame }
       window.__pushForm({ motion: 'full' })
       await sleep(150)
-      r.deepy.alwaysAttr = document.body.getAttribute('data-dsh-claude-motion')
+      r.states.alwaysAttr = document.body.getAttribute('data-dsh-claude-motion')
       // A compaction starts; the connection drops and the feed comes back
       // whole with the compaction's end in it. The shake above holds 4.8s.
       driver.emit({ type: 'compaction/start', seq: 4, time: Date.now(), data: { compactionId: 'c2', turn: null } })
       await sleep(4200)
-      r.deepy.resendBefore = whaleNow()
+      r.states.resendBefore = whaleNow()
       driver.resend([{ type: 'compaction/end', seq: 5, time: Date.now(), data: { compactionId: 'c2', turn: null } }])
       await sleep(1200)
-      r.deepy.resent = whaleNow()
+      r.states.resent = whaleNow()
       // The quiet minute to sleep, with the page's clock moved ahead: a minute
       // of work is no quiet spell, a minute idle is, and a pointer move wakes it.
       var deepyClock = Date.now
@@ -1004,23 +1213,684 @@
       driver.setTurn(null)
       driver.setStatus('smoke-deepy', { running: false })
       await sleep(1200)
-      r.deepy.afterWork = whaleNow()
+      r.states.afterWork = whaleNow()
       deepyAhead += 61000
       // The probe's clock is fake while setTimeout runs on the real one: wake a
       // pass to stand in for the sleep deadline the whale's timer would fire.
       wakeDeepyPass()
       await sleep(400)
-      r.deepy.asleep = whaleNow()
+      r.states.asleep = whaleNow()
       // Asleep for its second on stage first, as any state holds it.
       await sleep(700)
       document.dispatchEvent(new PointerEvent('pointermove', { bubbles: true }))
       await sleep(400)
       for (var wi = 0; wi < 60 && (whaleNow() || {}).animation !== 'waking'; wi++) await sleep(50)
-      r.deepy.woken = whaleNow()
+      r.states.woken = whaleNow()
       Date.now = deepyClock
       deepyConversation.remove()
       await sleep(200)
-      r.deepy.gone = whaleNow() === null && document.querySelectorAll('[data-dsh-claude-deepy-anchor]').length === 0
+      r.states.gone = whaleNow() === null && document.querySelectorAll('[data-dsh-claude-' + mascotName + '-anchor]').length === 0
+      if (mascotName === 'crab') {
+        // Where it appears: kept to the home page, the crab stays off the
+        // conversation; with the mascot off it leaves the home card as well.
+        document.body.appendChild(deepyConversation)
+        await sleep(300)
+        r.states.backInConversation = whaleNow() !== null
+        window.__pushForm({ mascotScope: 'home' })
+        await sleep(300)
+        r.states.homeOnly = whaleNow()
+        deepyConversation.remove()
+        var scopeHero = document.createElement('div')
+        scopeHero.setAttribute('data-phase', 'hero')
+        document.body.appendChild(scopeHero)
+        await sleep(300)
+        r.states.homeOnlyHero = whaleNow()
+        window.__pushForm({ mascot: 'off' })
+        await sleep(300)
+        r.states.off = whaleNow()
+        window.__pushForm({ mascot: 'deepy' })
+        await sleep(300)
+        r.states.deepyPicked = document.querySelector('.dsh-claude-deepy') !== null && document.querySelector('.dsh-claude-crab') === null
+        window.__pushForm({ mascot: 'crab', mascotScope: 'all' })
+        scopeHero.remove()
+        await sleep(200)
+      }
+    }
+    // The ported chat-follow feature (src/features/chat-follow/): a structural
+    // moment hands the host's follow back, and a reader who took the scroll
+    // over himself is left where he is.
+    if (window.SMOKE_CASE === 'chat-follow') {
+      var followScroller = document.querySelector('[data-conversation-scroll]')
+      var followColumn = document.querySelector('[data-chat-flow]')
+      var cappedBody = document.querySelector('[data-step-process]:not([data-group-expanded-mode]) [data-step-process-body]')
+      var expandedBody = document.querySelector('[data-step-process][data-group-expanded-mode] [data-step-process-body]')
+      var endGap = function () {
+        return Math.round(followScroller.scrollHeight - followScroller.clientHeight - followScroller.scrollTop)
+      }
+      var structuralMoment = async function () {
+        var node = document.createElement('div')
+        node.setAttribute('data-chat-flow-key', 'probe')
+        node.style.display = 'none'
+        followColumn.appendChild(node)
+        await sleep(250)
+        followColumn.removeChild(node)
+        await sleep(50)
+      }
+      r.chatFollow = {
+        marked: document.body.hasAttribute('data-dsh-claude-chat-follow'),
+        overflowX: cappedBody === null ? null : getComputedStyle(cappedBody).overflowX,
+        expandedOverflowX: expandedBody === null ? null : getComputedStyle(expandedBody).overflowX,
+      }
+      // At the end, so any reader-took-over the guard is holding is dropped.
+      followScroller.scrollTop = followScroller.scrollHeight
+      await sleep(80)
+      await structuralMoment()
+      // 60px off the end, the way a structural moment leaves it.
+      followScroller.scrollTop = Math.max(0, followScroller.scrollHeight - followScroller.clientHeight - 60)
+      await sleep(30)
+      r.chatFollow.before = endGap()
+      await structuralMoment()
+      r.chatFollow.after = endGap()
+      // A wheel of the reader's own: the hand-back stops until he returns.
+      followScroller.dispatchEvent(new WheelEvent('wheel', { bubbles: true }))
+      followScroller.scrollTop = Math.max(0, followScroller.scrollHeight - followScroller.clientHeight - 60)
+      await sleep(30)
+      r.chatFollow.readerBefore = endGap()
+      await structuralMoment()
+      r.chatFollow.readerAfter = endGap()
+      // The capped body's catch-up is walked in on a curve, not written in one
+      // frame (scroll-ease.js): grow the content well past the catch-up
+      // threshold and sample what is left to go at three moments.
+      if (cappedBody !== null) {
+        var cappedContent = cappedBody.querySelector('[data-step-process-content]')
+        var bodyGap = function () {
+          return Math.round(cappedBody.scrollHeight - cappedBody.clientHeight - cappedBody.scrollTop)
+        }
+        cappedBody.scrollTop = 0
+        await sleep(80)
+        if (cappedContent !== null) cappedContent.style.height = '900px'
+        await sleep(25)
+        r.chatFollow.catchUpEarly = bodyGap()
+        await sleep(110)
+        r.chatFollow.catchUpMid = bodyGap()
+        // A burst this size glides at the capped speed, so it takes about half a
+        // second to arrive; the quiet stretch between bursts is what that fits in.
+        await sleep(900)
+        r.chatFollow.catchUpDone = bodyGap()
+        await sleep(600)
+        // Held at the end: the ease ended there rather than being left running.
+        r.chatFollow.catchUpLate = bodyGap()
+      }
+      // The stream glide (chat-follow.js): with the host's own streaming mark on
+      // the page, the end the host's follow pins the position to is taken back
+      // before the frame paints and handed to the spring, so the text walks there
+      // instead of jumping. The mark is the host's; the pin is what its follow
+      // does on every content change.
+      followScroller.scrollTop = followScroller.scrollHeight
+      await sleep(100)
+      var streamingMark = document.createElement('div')
+      streamingMark.setAttribute('data-streaming', '')
+      followColumn.appendChild(streamingMark)
+      var glideBlock = document.createElement('div')
+      glideBlock.style.height = '300px'
+      followColumn.appendChild(glideBlock)
+      followScroller.scrollTop = followScroller.scrollHeight
+      await sleep(30)
+      r.chatFollow.glideEarly = endGap()
+      r.chatFollow.glideDiag = {
+        motion: document.body.getAttribute('data-dsh-claude-motion'),
+        streamMark: document.querySelector('[data-streaming]') !== null,
+        rolling: document.querySelector('[data-dsh-claude-rolling]') !== null,
+        buttonMarked: document.querySelector('[data-dsh-claude-stream-glide]') !== null,
+        followAttr: document.querySelector('[data-chat-following-tail]') !== null,
+      }
+      await sleep(120)
+      r.chatFollow.glideMid = endGap()
+      await sleep(900)
+      r.chatFollow.glideDone = endGap()
+      // The host's own button is kept out of sight while the glide follows: a
+      // position held off the end reads to the host as a reader who left.
+      r.chatFollow.glideButtonMarked = document.querySelector('[data-dsh-claude-stream-glide]') !== null
+      // A message the reader has just sent is not streaming content: the host's
+      // jump to it stands, and the glide stands down around it. The streaming
+      // mark is still on the page here, so without the stand-down the glide
+      // would take this jump back like any other.
+      var userRow = document.createElement('div')
+      userRow.setAttribute('data-chat-flow-key', 'sent')
+      userRow.setAttribute('data-chat-flow-kind', 'user')
+      userRow.style.height = '300px'
+      followColumn.appendChild(userRow)
+      followScroller.scrollTop = followScroller.scrollHeight
+      await sleep(60)
+      r.chatFollow.submitGap = endGap()
+      await sleep(200)
+      r.chatFollow.submitGapLate = endGap()
+      userRow.remove()
+      await sleep(60)
+      streamingMark.remove()
+      glideBlock.remove()
+      await sleep(120)
+      followScroller.scrollTop = followScroller.scrollHeight
+      await sleep(200)
+      r.chatFollow.glideButtonBack = document.querySelector('[data-dsh-claude-stream-glide]') === null
+    }
+    // The ported caret motion (src/features/caret/): the focused composer
+    // surface gets a drawn caret and the native one gives way; switching the
+    // feature off takes both away and gives the native one back.
+    if (window.SMOKE_CASE === 'caret') {
+      var caretEditor = document.querySelector('[data-composer-input]')
+      var caretOf = function () {
+        var layer = document.querySelector('[data-dsh-claude-caret-layer]')
+        return {
+          layer: layer !== null,
+          visible: layer !== null && layer.hasAttribute('data-dsh-claude-caret-visible'),
+          transform: layer === null ? null : layer.style.transform,
+          marked: caretEditor.hasAttribute('data-dsh-claude-caret'),
+          nativeHidden: getComputedStyle(caretEditor).caretColor === 'rgba(0, 0, 0, 0)',
+        }
+      }
+      var caretSelect = function () {
+        caretEditor.focus()
+        var text = caretEditor.firstChild
+        if (text !== null && text.nodeType === 3) {
+          var selection = document.getSelection()
+          selection.removeAllRanges()
+          var range = document.createRange()
+          range.setStart(text, text.data.length)
+          range.collapse(true)
+          selection.addRange(range)
+        }
+        document.dispatchEvent(new Event('selectionchange'))
+      }
+      caretSelect()
+      await sleep(250)
+      r.caret = { on: caretOf() }
+      // The plain surface: a textarea under the seat is measured through the
+      // hidden mirror, and taken over the same way.
+      var answer = document.getElementById('debugAnswer')
+      if (answer !== null) {
+        answer.focus()
+        answer.selectionStart = answer.value.length
+        answer.selectionEnd = answer.value.length
+        document.dispatchEvent(new Event('selectionchange'))
+        await sleep(250)
+        var answerLayer = answer.parentElement.querySelector('[data-dsh-claude-caret-layer]')
+        r.caret.plain = {
+          layer: answerLayer !== null,
+          marked: answer.hasAttribute('data-dsh-claude-caret'),
+          visible: answerLayer !== null && answerLayer.hasAttribute('data-dsh-claude-caret-visible'),
+          nativeHidden: getComputedStyle(answer).caretColor === 'rgba(0, 0, 0, 0)',
+        }
+        caretSelect()
+        await sleep(250)
+      }
+      window.__pushForm({ caretMotion: 'off' })
+      await sleep(250)
+      r.caret.off = caretOf()
+      window.__pushForm({ caretMotion: 'typing' })
+      await sleep(250)
+      r.caret.back = caretOf()
+      // The animation choice stills the drawn caret through its own stylesheet
+      // rule (caret.css), which is what D26's resolved attribute is for.
+      window.__pushForm({ motion: 'reduced' })
+      await sleep(250)
+      var reducedLayer = document.querySelector('[data-dsh-claude-caret-layer]')
+      r.caret.reduced = reducedLayer === null ? null : {
+        layer: true,
+        transition: getComputedStyle(reducedLayer).transitionDuration,
+        animation: getComputedStyle(reducedLayer).animationName,
+      }
+      window.__pushForm({ motion: 'system' })
+      await sleep(250)
+    }
+    // The ported automatic folding (src/features/chat-fold/): a running thinking
+    // row and a running process group are opened at install, both fold back when
+    // their section ends, a tier that does not cap its body is never pressed, and
+    // a group the reader opened himself in that phase stays open.
+    if (window.SMOKE_CASE === 'chat-fold') {
+      var foldThink = document.getElementById('debugThink')
+      var foldGroup = document.getElementById('debugGroup')
+      var foldHeader = document.getElementById('debugGroupHeader')
+      var foldBody = document.getElementById('debugGroupBody')
+      var foldExpandedBody = document.getElementById('debugExpandedBody')
+      await sleep(350)
+      r.fold = {
+        thinkOpen: foldThink.hasAttribute('data-expanded'),
+        groupOpen: !foldBody.hasAttribute('hidden'),
+        openMark: foldGroup.hasAttribute('data-dsh-claude-open'),
+        liveDetail: foldGroup.hasAttribute('data-dsh-claude-live-detail'),
+        label: foldHeader.getAttribute('data-dsh-claude-label'),
+        labelName: foldHeader.getAttribute('aria-label'),
+        spread: foldHeader.style.getPropertyValue('--dsh-claude-label-spread'),
+        expandedUntouched: !foldExpandedBody.hasAttribute('hidden'),
+        clicks: Object.assign({}, window.__foldClicks),
+      }
+      // The reasoning stops and the process section ends: both fold back.
+      foldThink.setAttribute('data-state', 'ok')
+      var foldShimmer = foldHeader.querySelector('[data-shimmer]')
+      if (foldShimmer !== null) foldShimmer.parentNode.removeChild(foldShimmer)
+      // The host drops the live detail with the shimmer: what is left is the label
+      // alone, with no separator in it.
+      var foldText = foldHeader.textContent
+      var foldCut = foldText.indexOf(' · ')
+      if (foldCut >= 0) foldHeader.textContent = foldText.slice(0, foldCut)
+      await sleep(450)
+      r.fold.after = {
+        thinkOpen: foldThink.hasAttribute('data-expanded'),
+        groupOpen: !foldBody.hasAttribute('hidden'),
+        openMark: foldGroup.hasAttribute('data-dsh-claude-open'),
+        liveDetail: foldGroup.hasAttribute('data-dsh-claude-live-detail'),
+        clicks: Object.assign({}, window.__foldClicks),
+      }
+      // The fold glide on the reader's own press: the click is intercepted, the
+      // real element is pressed with the door marked, and the click is handed back
+      // afterwards so the host collapses it.
+      var disclosure = document.getElementById('debugDisclosure')
+      var disclosureBody = function () { return document.getElementById('debugDisclosureBody') }
+      var disclosureBefore = window.__disclosureClicks
+      disclosure.click()
+      await sleep(60)
+      var rollingBody = disclosureBody()
+      r.fold.glide = {
+        rolling: rollingBody !== null && rollingBody.hasAttribute('data-dsh-claude-rolling'),
+        clipped: rollingBody !== null && rollingBody.style.overflow === 'hidden',
+        clicksDuringRoll: window.__disclosureClicks - disclosureBefore,
+      }
+      await sleep(500)
+      r.fold.glide.after = {
+        bodyGone: disclosureBody() === null,
+        rollingAnywhere: document.querySelector('[data-dsh-claude-rolling]') !== null,
+        clicks: window.__disclosureClicks - disclosureBefore,
+      }
+      // The opening direction: the press is remembered as an intent, the host
+      // inserts the body, and the door rolls it open.
+      disclosure.click()
+      await sleep(80)
+      var openingBody = disclosureBody()
+      r.fold.glide.open = {
+        inserted: openingBody !== null,
+        rolling: openingBody !== null && openingBody.hasAttribute('data-dsh-claude-rolling'),
+      }
+      await sleep(450)
+      var settledBody = disclosureBody()
+      r.fold.glide.openAfter = {
+        present: settledBody !== null,
+        rolling: settledBody !== null && settledBody.hasAttribute('data-dsh-claude-rolling'),
+      }
+      // The reader's own press in this phase: the module leaves it alone.
+      foldHeader.click()
+      await sleep(350)
+      r.fold.readerOpen = !foldBody.hasAttribute('hidden')
+      // The switch covers the door and the entrance fade as well as the automatic
+      // folding: off, a press reaches the host's own handler in the same turn and
+      // an inserted body carries no transition (fold-motion.css rides
+      // data-dsh-claude-chat-fold).
+      var foldFlow = document.getElementById('debugFlow')
+      var entranceOf = function () {
+        var row = document.createElement('button')
+        row.setAttribute('type', 'button')
+        row.setAttribute('data-disclosure-row', '')
+        var body = document.createElement('div')
+        body.textContent = 'probe body'
+        foldFlow.appendChild(row)
+        foldFlow.appendChild(body)
+        var value = getComputedStyle(body).transitionDuration
+        row.remove()
+        body.remove()
+        return value
+      }
+      r.fold.entranceOn = entranceOf()
+      window.__pushForm({ chatAnimations: false })
+      await sleep(200)
+      var offBefore = window.__disclosureClicks
+      disclosure.click()
+      var offImmediate = window.__disclosureClicks - offBefore
+      await sleep(300)
+      r.fold.animationsOff = {
+        mark: document.body.hasAttribute('data-dsh-claude-chat-fold'),
+        entrance: entranceOf(),
+        immediateClicks: offImmediate,
+        rolling: document.querySelector('[data-dsh-claude-rolling]') !== null,
+      }
+      window.__pushForm({ chatAnimations: true })
+      await sleep(200)
+      r.fold.animationsBack = { mark: document.body.hasAttribute('data-dsh-claude-chat-fold') }
+    }
+    // The ported token reveal (src/features/chat-reveal/): characters arriving in
+    // a streaming container are registered as named highlights from the faintest
+    // step, they are gone once faded, and the preference withdraws the engine
+    // whole.
+    if (window.SMOKE_CASE === 'chat-reveal') {
+      var revealPeek = function () {
+        var registry = window.CSS ? window.CSS.highlights : null
+        var total = 0
+        var steps = 0
+        if (registry) {
+          for (var step = 0; step < 24; step += 1) {
+            var found = registry.get('dsh-claude-tok-' + step)
+            var size = found ? found.size : 0
+            total += size
+            if (size > 0) steps += 1
+          }
+        }
+        return { total: total, steps: steps, mark: document.body.hasAttribute('data-dsh-claude-chat-reveal') }
+      }
+      var revealContainer = document.createElement('div')
+      revealContainer.setAttribute('data-streaming', '')
+      revealContainer.textContent = 'Hello there'
+      document.body.appendChild(revealContainer)
+      await sleep(80)
+      var revealOpening = revealPeek()
+      revealContainer.firstChild.data = 'Hello there, more'
+      await sleep(80)
+      var revealGrown = revealPeek()
+      await sleep(450)
+      var revealSettled = revealPeek()
+      window.__pushForm({ chatAnimations: false })
+      await sleep(150)
+      var revealOff = revealPeek()
+      window.__pushForm({ chatAnimations: true })
+      await sleep(150)
+      var revealBack = revealPeek()
+      // The animation choice: "reduced" withdraws the engine the same way the
+      // preference does (D26 — the resolved choice, not the system query).
+      window.__pushForm({ motion: 'reduced' })
+      await sleep(150)
+      var revealReduced = revealPeek()
+      window.__pushForm({ motion: 'system' })
+      await sleep(150)
+      // And the system setting flipping underneath "follow the system": the
+      // resolved attribute moves, the preference stream is re-run and a running
+      // engine goes with it (src/core/prefs.js, refreshMotionAttribute).
+      window.__setSystemReduced(true)
+      await sleep(250)
+      var revealFlipReduced = revealPeek()
+      window.__setSystemReduced(false)
+      await sleep(250)
+      var revealFlipBack = revealPeek()
+      revealContainer.remove()
+      r.reveal = {
+        opening: revealOpening, grown: revealGrown, settled: revealSettled, off: revealOff, back: revealBack,
+        reduced: revealReduced, systemFlip: { reduced: revealFlipReduced, back: revealFlipBack },
+      }
+    }
+    // The ported file-change row (src/features/chat-files/): the two keyed seats
+    // are claimed from the tool view slot, and one row renders its collapsed tail
+    // and its expanded card from the call's own arguments and metadata.
+    if (window.SMOKE_CASE === 'chat-files') {
+      var slotEntries = (window.__slots || []).filter(function (entry) { return entry.key === 'tool.call.toolview' })
+      var fileRow = (window.__slotComponents || {}).edit
+      var t = function (key) { return 't:' + key }
+      var walkTree = function (node, visit) {
+        if (typeof node === 'string' || typeof node === 'number') { visit({ type: '#text', props: { children: String(node) } }); return }
+        if (node === null || node === undefined || typeof node !== 'object') return
+        if (Array.isArray(node)) { node.forEach(function (child) { walkTree(child, visit) }); return }
+        visit(node)
+        walkTree(node.props && node.props.children, visit)
+        // The disclosure row hands its collapsed half to the primitive as a prop,
+        // and the stand-in's primitive does not render it: the probe walks it here.
+        walkTree(node.props && node.props.collapsedContent, visit)
+      }
+      var renderRow = function (toolName, block, options) {
+        var state = { expanded: !!(options && options.expanded) }
+        var react = window.__react
+        react.rendering = true
+        var tree
+        try {
+          tree = fileRow({
+            t: t,
+            toolName: toolName,
+            block: block,
+            cwd: 'C:\\work',
+            home: 'C:\\Users\\dev',
+            openFile: function () { window.__fileRowOpened = (window.__fileRowOpened || 0) + 1 },
+            inspect: options && options.inspect ? function () {} : undefined,
+            useDisclosure: function () { return { expanded: state.expanded, toggle: function () {} } },
+          })
+        } finally {
+          react.rendering = false
+        }
+        var out = { classes: [], texts: [], root: null, diff: null, io: null, hidden: null, hiddenText: null }
+        walkTree(tree, function (node) {
+          var props = node.props || {}
+          if (typeof props.className === 'string') {
+            out.classes.push(props.className)
+            if (props.className.indexOf('dsh-claude-file-root') >= 0) {
+              out.root = { variant: props['data-variant'], tool: props['data-tool'], state: props['data-state'] }
+            }
+            if (props.className.indexOf('dsh-claude-file-summary') >= 0 || props.className.indexOf('dsh-claude-file-link') >= 0) out.summary = props.className
+            if (props.className.indexOf('dsh-claude-file-diff') >= 0) out.diff = props
+            if (props.className.indexOf('dsh-claude-file-io ') >= 0 || props.className === 'dsh-claude-file-io') out.io = props
+            if (props.className.indexOf('dsh-claude-file-hidden') >= 0) {
+              out.hidden = props
+              out.hiddenText = Array.isArray(props.children) ? props.children[0] : props.children
+            }
+          }
+          if (node.type === 'DisclosureRow') out.disclosure = props
+          if (node.type === 'DiffBlock') out.diff = props
+          if (node.type === '#text') out.texts.push(String(props.children))
+        })
+        return out
+      }
+      var argsRaw = JSON.stringify({ file_path: 'C:\\work\\app.js', old_string: 'const a = 1', new_string: 'const a = 2' })
+      var settled = {
+        kind: 'tool-result', callId: 'c1',
+        call: { name: 'edit', argsRaw: argsRaw },
+        content: [{ type: 'text', text: 'ok' }],
+        isError: false,
+        meta: { diffs: [{ path: 'C:\\work\\app.js', oldText: 'const a = 1', newText: 'const a = 2' }] },
+      }
+      r.files = { seats: slotEntries }
+      r.files.collapsed = renderRow('edit', settled, {})
+      r.files.expanded = renderRow('edit', settled, { expanded: true, inspect: true })
+      // A failure: no diff, the summary holds the verdict, and the path link gives way.
+      var failed = {
+        kind: 'tool-result', callId: 'c2',
+        call: { name: 'edit', argsRaw: argsRaw },
+        content: [],
+        isError: true,
+        error: { name: 'ToolError', code: 'permission_denied' },
+        meta: { diffs: [] },
+      }
+      r.files.failed = renderRow('edit', failed, { expanded: true })
+      // A write whose escalation pair is incomplete: the host falls back to the IN/OUT card.
+      var write = {
+        phase: 'start', callId: 'c3', name: 'write',
+        argsRaw: JSON.stringify({ file_path: 'C:\\work\\note.md', content: 'hello\nworld', sandbox_permissions: 'workspace-write', justification: 'x' }),
+      }
+      r.files.running = renderRow('write', write, { expanded: true })
+      var escalated = {
+        phase: 'start', callId: 'c4', name: 'write',
+        argsRaw: JSON.stringify({ file_path: 'C:\\work\\note.md', content: 'hello', justification: 'why' }),
+      }
+      r.files.escalated = renderRow('write', escalated, { expanded: true })
+      // The switch comes down whole: this feature takes the host's two seat keys
+      // over, and a key cannot be handed back by reading a preference, so off
+      // has to unregister them (D29/D32).
+      window.__pushForm({ chatAnimations: false })
+      await sleep(150)
+      r.files.offSeats = (window.__slots || []).filter(function (entry) { return entry.key === 'tool.call.toolview' }).length
+      window.__pushForm({ chatAnimations: true })
+      await sleep(150)
+      r.files.backSeats = (window.__slots || []).filter(function (entry) { return entry.key === 'tool.call.toolview' }).length
+      // The other chat-behaviour plugin arriving and leaving while the page
+      // runs: the presence watch re-takes the decision, so the chat-area features
+      // stand down (here: the seat keys and the install-time marks) and come
+      // back without a reload (src/shared/peer-plugin.js).
+      var fileSeats = function () {
+        return (window.__slots || []).filter(function (entry) { return entry.key === 'tool.call.toolview' }).length
+      }
+      var filePeerStyle = document.createElement('style')
+      filePeerStyle.id = 'dsh-chat-ux-style'
+      document.head.appendChild(filePeerStyle)
+      await sleep(250)
+      r.files.peerOn = {
+        seats: fileSeats(),
+        foldMark: document.body.hasAttribute('data-dsh-claude-chat-fold'),
+        revealMark: document.body.hasAttribute('data-dsh-claude-chat-reveal'),
+      }
+      filePeerStyle.remove()
+      await sleep(250)
+      r.files.peerOff = { seats: fileSeats(), foldMark: document.body.hasAttribute('data-dsh-claude-chat-fold') }
+    }
+    // The ported send flight (src/features/chat-send/): a submission lifts a
+    // stand-in off the composer card, hides the real row while it flies, and puts
+    // everything back when it lands.
+    if (window.SMOKE_CASE === 'chat-send') {
+      var sendInput = document.getElementById('editor')
+      var sendFlow = document.createElement('div')
+      sendFlow.setAttribute('data-chat-flow', '')
+      sendFlow.id = 'sendFlow'
+      sendFlow.style.cssText = 'display:block;min-height:120px'
+      // Right above the composer card, so both ends of the flight are on one screen.
+      var sendCard = document.querySelector('[data-composer-card]')
+      if (sendCard !== null && sendCard.parentElement !== null) sendCard.parentElement.insertBefore(sendFlow, sendCard)
+      else document.body.insertBefore(sendFlow, document.body.firstChild)
+      r.send = { inputFound: sendInput !== null }
+      // The reader presses Enter in the draft: that is where the origin is taken.
+      if (sendInput !== null) sendInput.dispatchEvent(new KeyboardEvent('keydown', { key: 'Enter', bubbles: true, cancelable: true }))
+      await sleep(60)
+      // The host mounts the echo bubble the moment the submission goes through.
+      var sendEcho = document.createElement('div')
+      sendEcho.setAttribute('data-submission-echo', '')
+      sendEcho.innerHTML = '<div style="width:220px;height:44px;background:rgb(240,240,240);border-radius:18px;padding:8px 12px;font-size:15px;line-height:24px">hello world</div>'
+      sendFlow.appendChild(sendEcho)
+      await sleep(90)
+      var sendGhost = document.querySelector('[data-dsh-claude-send-ghost]')
+      r.send.flying = {
+        ghost: sendGhost !== null,
+        clone: sendGhost !== null && sendGhost.querySelector('[data-composer-card]') !== null,
+        hidden: sendEcho.hasAttribute('data-dsh-claude-send-flight'),
+        visibility: getComputedStyle(sendEcho).visibility,
+        animations: sendGhost === null ? 0 : sendGhost.getAnimations({ subtree: true }).length,
+      }
+      await sleep(700)
+      r.send.landed = {
+        ghost: document.querySelector('[data-dsh-claude-send-ghost]') !== null,
+        hidden: sendEcho.hasAttribute('data-dsh-claude-send-flight'),
+        visibility: getComputedStyle(sendEcho).visibility,
+      }
+      sendEcho.remove()
+      // The animation choice: with "reduced" in force the origin is not even
+      // measured, so no stand-in goes up and the echo stays visible (D26 — the
+      // resolved choice, read at each submission).
+      window.__pushForm({ motion: 'reduced' })
+      await sleep(150)
+      if (sendInput !== null) sendInput.dispatchEvent(new KeyboardEvent('keydown', { key: 'Enter', bubbles: true, cancelable: true }))
+      await sleep(60)
+      var reducedEcho = document.createElement('div')
+      reducedEcho.setAttribute('data-submission-echo', '')
+      reducedEcho.innerHTML = '<div style="width:220px;height:44px;background:rgb(240,240,240);border-radius:18px;padding:8px 12px">hello again</div>'
+      sendFlow.appendChild(reducedEcho)
+      await sleep(120)
+      r.send.reduced = {
+        ghost: document.querySelector('[data-dsh-claude-send-ghost]') !== null,
+        hidden: reducedEcho.hasAttribute('data-dsh-claude-send-flight'),
+        visibility: getComputedStyle(reducedEcho).visibility,
+      }
+      reducedEcho.remove()
+      window.__pushForm({ motion: 'system' })
+      await sleep(150)
+      sendFlow.remove()
+    }
+    // The other chat-behaviour plugin installed (src/shared/peer-plugin.js): the
+    // ported features stand down whole, and the settings page shows their
+    // switches off and disabled with the reason.
+    if (window.SMOKE_CASE === 'peer-chat-ux') {
+      var peerHighlights = function () {
+        var registry = window.CSS && window.CSS.highlights
+        if (!registry) return 0
+        var count = 0
+        for (var step = 0; step < 24; step++) if (registry.has('dsh-claude-tok-' + step)) count += 1
+        return count
+      }
+      // A chat area and a focused composer: live features would mark, fold or
+      // draw on them within a pass or two.
+      var peerChat = document.createElement('div')
+      peerChat.innerHTML = '<div data-chat-flow><div data-streaming><p>streaming text</p></div>' +
+        '<div data-variant="think" data-state="running"><button type="button">Thinking</button></div>' +
+        '<div data-step-process><button type="button" data-process-activity><span data-shimmer>Working</span></button>' +
+        '<div data-step-process-body hidden="until-found"><div data-step-process-content>x</div></div></div></div>'
+      document.body.appendChild(peerChat)
+      var peerEditor = document.querySelector('[data-composer-input]')
+      if (peerEditor !== null) {
+        peerEditor.focus()
+        document.dispatchEvent(new Event('selectionchange'))
+      }
+      await sleep(300)
+      r.peer = {
+        marks: {
+          follow: document.body.hasAttribute('data-dsh-claude-chat-follow'),
+          fold: document.body.hasAttribute('data-dsh-claude-chat-fold'),
+          reveal: document.body.hasAttribute('data-dsh-claude-chat-reveal'),
+          caretLayer: document.querySelector('[data-dsh-claude-caret-layer]') !== null,
+          caretMark: peerEditor !== null && peerEditor.hasAttribute('data-dsh-claude-caret'),
+        },
+        seats: (window.__slots || []).filter(function (entry) { return entry.key === 'tool.call.toolview' }).length,
+        highlights: peerHighlights(),
+        thinkExpanded: document.querySelector('[data-variant="think"]').hasAttribute('data-expanded'),
+        groupOpen: !document.querySelector('[data-step-process-body]').hasAttribute('hidden'),
+      }
+      // The settings page, through the same React-tree walk the settings case
+      // uses: the Conversation tab's rows, which of them refuse input, which
+      // carry the line naming the owner, and what answer each control shows.
+      var PeerSection = (window.__slotComponents || {})['claude-style']
+      var peerWalk = function (node, visit) {
+        if (node === null || node === undefined || typeof node !== 'object') return
+        if (Array.isArray(node)) { node.forEach(function (child) { peerWalk(child, visit) }); return }
+        visit(node)
+        peerWalk(node.props && node.props.children, visit)
+      }
+      var peerTexts = function (node, out) {
+        if (typeof node === 'string') { out.push(node); return }
+        if (node === null || node === undefined || typeof node !== 'object') return
+        if (Array.isArray(node)) { node.forEach(function (child) { peerTexts(child, out) }); return }
+        peerTexts(node.props && node.props.children, out)
+      }
+      var peerDisabled = function (node) {
+        var found = false
+        peerWalk(node, function (child) { if ((child.props || {}).disabled === true) found = true })
+        return found
+      }
+      var peerManages = function (node) {
+        var found = false
+        peerWalk(node, function (child) {
+          var className = (child.props || {}).className
+          if (typeof className === 'string' && className.split(' ').indexOf('dsh-claude-settings-row-managed') >= 0) found = true
+        })
+        return found
+      }
+      // What the row's control shows: a switch's state, or the pressed option of
+      // a segmented control. The reader's own stored answer, not a forced off.
+      var peerAnswer = function (node) {
+        var answer = { on: false, option: null }
+        peerWalk(node, function (child) {
+          var props = child.props || {}
+          if (props['data-on'] === '') answer.on = true
+          if (props['aria-pressed'] === 'true') answer.option = props.key
+        })
+        return answer
+      }
+      r.peer.settings = { registered: typeof PeerSection === 'function', rows: [], refusing: [], managed: [], answers: {}, texts: [] }
+      if (r.peer.settings.registered) {
+        var peerReact = window.__react
+        peerReact.rendering = true
+        peerReact.states = { general: 'conversation' }
+        var peerTree = PeerSection({})
+        peerReact.rendering = false
+        peerReact.states = null
+        peerWalk(peerTree, function (node) {
+          var props = node.props || {}
+          if (typeof props.className === 'string' && /(^| )dsh-claude-settings-row( |$)/.test(props.className)) {
+            r.peer.settings.rows.push(props.key)
+            if (peerDisabled(props.children)) r.peer.settings.refusing.push(props.key)
+            if (peerManages(props.children)) r.peer.settings.managed.push(props.key)
+            r.peer.settings.answers[props.key] = peerAnswer(props.children)
+          }
+        })
+        peerTexts(peerTree, r.peer.settings.texts)
+      }
+      peerChat.remove()
     }
     // The host's own account row, when the host has one: the skin marks it and
     // repaints it as a Claude row, so the teardown has to hand it back exactly as
@@ -1070,7 +1940,7 @@
       await sleep(200)
       r.passesAfterTeardown = window.__passes - before
       r.leftNodes = document.querySelectorAll('[class*="dsh-claude-"]').length
-      r.leftMarkers = document.querySelectorAll('[data-dsh-claude-footer-entry], [data-dsh-claude-footer-hidden], [data-dsh-claude-footer-overlay], [data-dsh-claude-model-host], [data-dsh-claude-account-host-row], [data-dsh-claude-context-stats], [data-dsh-claude-motion], [data-dsh-claude-turn-state], [data-dsh-claude-turn-status], [style*="--dsh-claude-turn-order"], [data-dsh-claude-deepy-anchor]').length
+      r.leftMarkers = document.querySelectorAll('[data-dsh-claude-footer-entry], [data-dsh-claude-footer-hidden], [data-dsh-claude-footer-overlay], [data-dsh-claude-model-host], [data-dsh-claude-account-host-row], [data-dsh-claude-context-stats], [data-dsh-claude-motion], [data-dsh-claude-turn-state], [data-dsh-claude-turn-status], [style*="--dsh-claude-turn-order"], [data-dsh-claude-deepy-anchor], [data-dsh-claude-crab-anchor]').length
       r.leftAttrs = Array.prototype.filter.call(document.body.attributes, function (a) { return /^data-dsh-(claude|window)/.test(a.name) }).map(function (a) { return a.name })
       r.leftStylesheet = !!document.getElementById('dsh-claude-style-style')
       if (viewStrip) r.viewPill.left = viewStrip.hasAttribute('data-dsh-claude-pill') || viewStrip.hasAttribute('data-dsh-view-tabs') || viewStrip.style.length > 0

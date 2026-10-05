@@ -48,53 +48,51 @@
        */
       function syncVariant(cards) {
         const value = hero && !studioHome ? 'hero' : 'inline'
-        const syncedStacks = []
-        for (let c = 0; c < cards.length; c++) {
-          const card = cards[c]
-          if (card.getAttribute('data-composer-variant') !== value) card.setAttribute('data-composer-variant', value)
+        const stacks = new Set()
+        for (const card of cards) {
+          setAttributeIfChanged(card, 'data-composer-variant', value)
           const stack = card.closest(COMPOSER_STACK)
-          if (stack !== null && !syncedStacks.includes(stack)) {
-            if (stack.getAttribute('data-composer-variant') !== value) {
-              stack.setAttribute('data-composer-variant', value)
-            }
-            syncedStacks.push(stack)
-          }
+          if (stack !== null) stacks.add(stack)
         }
+        for (const stack of stacks) setAttributeIfChanged(stack, 'data-composer-variant', value)
       }
 
-      /** The input rail inside a card: the attachment shell and its scrolling inner rail. */
+      /**
+       * The attachment rails inside a card (ui-attachment): the shell rail and
+       * its scrolling inner rail, both `_rail`.
+       */
       const ATTACHMENT_RAIL = '[class*="_rail"]'
-      /** Anything in a card that means it carries attachments. */
-      const ATTACHMENT_PRESENT = `[class*="imageItem"], [class*="thumbnail"], [class*="FileCard"], ${ATTACHMENT_RAIL} :is([class*="_item"], img, [class*="_card"])`
+      /**
+       * Anything in a card that means it carries attachments: an image tile
+       * (`_imageItem`, `_thumbnail`), or any item, image or file card
+       * (FileCard's `_card`) on a rail.
+       */
+      const ATTACHMENT_PRESENT = `[class*="_imageItem"], [class*="_thumbnail"], ${ATTACHMENT_RAIL} :is([class*="_item"], img, [class*="_card"])`
       /**
        * The attachment tiles the stylesheet reshapes into thumbnails. They are
        * found here once per pass and marked, so the rules read one attribute
        * instead of re-running this list, with its structural :has(img), on
        * every DOM change.
        */
-      const ATTACHMENT_TILES = `${ATTACHMENT_RAIL} :is([class*="imageItem"], [class*="thumbnail"], [class*="FileCard"], [class*="_item"]:has(img), [class*="_card"]:has(img), [class*="attachment"]:has(img))`
+      const ATTACHMENT_TILES = `${ATTACHMENT_RAIL} :is([class*="_imageItem"], [class*="_thumbnail"], [class*="_item"]:has(img), [class*="_card"]:has(img))`
       const ATTACHMENT_TILE_ATTR = 'data-dsh-claude-attachment'
 
       /** Mark the cards that carry attachments, and the tiles inside them. */
       function syncAttachments(cards) {
-        const tiles = []
-        for (let ci = 0; ci < cards.length; ci++) {
-          const card = cards[ci]
-          if (active && card.querySelector(ATTACHMENT_PRESENT) !== null) {
-            if (card.getAttribute('data-has-attachments') !== 'true') card.setAttribute('data-has-attachments', 'true')
-            const found = card.querySelectorAll(ATTACHMENT_TILES)
-            for (let t = 0; t < found.length; t++) tiles.push(found[t])
-          } else if (card.hasAttribute('data-has-attachments')) {
+        const tiles = new Set()
+        for (const card of cards) {
+          const carries = active && card.querySelector(ATTACHMENT_PRESENT) !== null
+          if (carries) {
+            setAttributeIfChanged(card, 'data-has-attachments', 'true')
+            for (const tile of card.querySelectorAll(ATTACHMENT_TILES)) tiles.add(tile)
+          } else {
             card.removeAttribute('data-has-attachments')
           }
         }
-        const marked = document.querySelectorAll(`[${ATTACHMENT_TILE_ATTR}]`)
-        for (let m = 0; m < marked.length; m++) {
-          if (!tiles.includes(marked[m])) marked[m].removeAttribute(ATTACHMENT_TILE_ATTR)
+        for (const marked of document.querySelectorAll(`[${ATTACHMENT_TILE_ATTR}]`)) {
+          if (!tiles.has(marked)) marked.removeAttribute(ATTACHMENT_TILE_ATTR)
         }
-        for (let n = 0; n < tiles.length; n++) {
-          if (!tiles[n].hasAttribute(ATTACHMENT_TILE_ATTR)) tiles[n].setAttribute(ATTACHMENT_TILE_ATTR, '')
-        }
+        for (const tile of tiles) tile.toggleAttribute(ATTACHMENT_TILE_ATTR, true)
       }
 
       const CONTROL_ATTR = 'data-dsh-claude-control'
@@ -111,18 +109,15 @@
        *   access — the button the permission slot renders (host.js).
        */
       function syncControls(cards) {
-        const mark = (button, role) => {
-          if (button.getAttribute(CONTROL_ATTR) !== role) button.setAttribute(CONTROL_ATTR, role)
-        }
         for (const card of cards) {
           const commands = card.querySelector('[class*="_tools"] button[aria-haspopup="listbox"]')
-          if (commands !== null) mark(commands, 'commands')
+          if (commands !== null) setAttributeIfChanged(commands, CONTROL_ATTR, 'commands')
           for (const button of card.querySelectorAll('[class*="_trailing"] button[class*="_primary"]')) {
-            mark(button, button.querySelector('svg rect') !== null ? 'stop' : 'send')
+            setAttributeIfChanged(button, CONTROL_ATTR, button.querySelector('svg rect') !== null ? 'stop' : 'send')
           }
         }
         const access = findAccessTrigger()
-        if (access !== null) mark(access, 'access')
+        if (access !== null) setAttributeIfChanged(access, CONTROL_ATTR, 'access')
       }
 
       const DRAFT_EMPTY_ATTR = 'data-dsh-claude-draft-empty'
@@ -136,12 +131,7 @@
        * DOM change, so the pass that follows it moves the mark in the same frame.
        */
       function syncDraftState(cards) {
-        for (let i = 0; i < cards.length; i++) {
-          const empty = findComposerPlaceholder(cards[i]) !== null
-          if (empty === cards[i].hasAttribute(DRAFT_EMPTY_ATTR)) continue
-          if (empty) cards[i].setAttribute(DRAFT_EMPTY_ATTR, '')
-          else cards[i].removeAttribute(DRAFT_EMPTY_ATTR)
-        }
+        for (const card of cards) card.toggleAttribute(DRAFT_EMPTY_ATTR, findComposerPlaceholder(card) !== null)
       }
 
       /**
@@ -152,23 +142,24 @@
         return card.nextElementSibling
       }
 
-      /** The meter the host parks in that dock, or null when it is not there. */
+      /**
+       * The meter the host parks in that dock, or null when it is not there.
+       * Its trigger is told apart by its glyph (ui-conversation ContextMeter):
+       * the dialog trigger that draws a ring of `<circle>`s; the stats pills
+       * draw none.
+       */
       function dockedContextMeter(dock) {
         if (dock === null) return null
-        const triggers = dock.querySelectorAll('button[aria-haspopup="dialog"]')
-        for (let i = 0; i < triggers.length; i++) {
-          // The meter's trigger IS the occupancy reading ("42%") and no stats
-          // pill ever is, so the label alone identifies it without a class name
-          // (the host hashes those per build).
-          if (!/^\d{1,3}%$/.test((triggers[i].textContent || '').trim())) continue
-          let node = triggers[i]
+        for (const trigger of dock.querySelectorAll('button[aria-haspopup="dialog"]')) {
+          if (trigger.querySelector(':scope > svg > circle') === null) continue
+          let node = trigger
           while (node.parentElement !== null && node.parentElement !== dock) node = node.parentElement
           return node
         }
         return null
       }
 
-      /** The room the meter takes at the toolbar row's right end, as last written. */
+      /** The room the meter takes at the toolbar row's right end, as the row carries it. */
       let meterRoom = ''
       /** The meter node the room was measured from, and the reading and scope it had then. */
       let meterNode = null
@@ -184,12 +175,19 @@
        * the dock over the toolbar row and puts the meter at the row's right end,
        * after the model and effort triggers; the trailing cluster keeps that
        * room free through --dsh-claude-meter-room — the meter's width plus the
-       * cluster's own 8px gap, written only on a change.
+       * cluster's own 8px gap.
        *
        * The meter is re-resolved only when the cached node left the tree, and
        * its width is re-read only when its reading moved (the trigger IS the
        * percentage text, whose width follows the text): a pass with an unmoved
        * meter reads no layout, which during streaming would otherwise force one.
+       * A reading taken with no box — the composer's seat is display: none while
+       * another conversation tab is up — is no reading: it stays unrecorded, the
+       * row keeps the room it has, and the next pass measures again.
+       *
+       * The write is decided against the value the document carries: a variable
+       * another generation or feature cleared has to come back, and the
+       * declaration is the cheapest thing to ask.
        */
       function stampContextMeter(card) {
         if (meterNode !== null && !meterNode.isConnected) {
@@ -198,23 +196,32 @@
           meterWidth = 0
         }
         let meter = meterNode
-        if (card === void 0) meter = null
+        if (card === undefined) meter = null
         else if (meter === null) meter = dockedContextMeter(composerDock(card))
         let room = ''
         if (meter !== null) {
-          if (!meter.hasAttribute('data-dsh-claude-context-meter')) meter.setAttribute('data-dsh-claude-context-meter', '')
+          meter.toggleAttribute('data-dsh-claude-context-meter', true)
           const reading = meter.textContent || ''
           // Re-measure when the reading moved or the restyle scope flipped:
           // either can change what the room should be.
           if (reading !== meterReading || active !== meterMeasuredActive) {
-            meterReading = reading
-            meterMeasuredActive = active
-            meterWidth = active ? meter.offsetWidth : 0
+            const width = active ? meter.offsetWidth : 0
+            // A zero width with the restyle on is the composer having no box
+            // right now, never a meter that takes no room.
+            if (!active || width > 0) {
+              meterReading = reading
+              meterMeasuredActive = active
+              meterWidth = width
+            }
           }
-          if (active && meterWidth > 0) room = `${meterWidth + 8}px`
+          if (active) room = meterWidth > 0 ? `${meterWidth + 8}px` : meterRoom
         }
         meterNode = meter
-        if (room === meterRoom) return
+        const written = document.body.style.getPropertyValue('--dsh-claude-meter-room')
+        if (room === written) {
+          meterRoom = room
+          return
+        }
         meterRoom = room
         if (room === '') document.body.style.removeProperty('--dsh-claude-meter-room')
         else document.body.style.setProperty('--dsh-claude-meter-room', room)
@@ -234,22 +241,11 @@
        * single view) means the chat surface is all there is.
        */
       function syncChatTabComposer() {
-        if (!active) {
-          document.body.removeAttribute('data-dsh-claude-composer-hidden')
-          return
-        }
-        let chatActive = true
-        const seat = document.querySelector('[data-composer-seat]')
-        const root = seat && seat.closest ? seat.closest('[data-phase]') : null
-        if (root) {
-          const list = root.querySelector('[role="tablist"]')
-          if (list) {
-            const first = list.querySelector('[role="tab"]')
-            if (first) chatActive = first.getAttribute('aria-selected') === 'true'
-          }
-        }
-        if (chatActive) document.body.removeAttribute('data-dsh-claude-composer-hidden')
-        else document.body.setAttribute('data-dsh-claude-composer-hidden', '')
+        const root = closestFrom(document.querySelector('[data-composer-seat]'), '[data-phase]')
+        const list = root === null ? null : root.querySelector('[role="tablist"]')
+        const first = list === null ? null : list.querySelector('[role="tab"]')
+        const chatActive = first === null || first.getAttribute('aria-selected') === 'true'
+        document.body.toggleAttribute(COMPOSER_HIDDEN_ATTR, active && !chatActive)
       }
 
       function syncComposer() {
@@ -257,10 +253,7 @@
         const cards = findComposerCards()
         heroCard = hero && cards.length > 0 ? cards[0] : null
         syncVariant(cards)
-        if (active !== document.body.hasAttribute(COMPOSER_ATTR)) {
-          if (active) document.body.setAttribute(COMPOSER_ATTR, '')
-          else document.body.removeAttribute(COMPOSER_ATTR)
-        }
+        document.body.toggleAttribute(COMPOSER_ATTR, active)
         syncAttachments(cards)
         syncDraftState(cards)
         syncControls(cards)
@@ -290,13 +283,11 @@
        * 150px of the end counts as at the end.
        */
       function followTranscript() {
-        const scroller = document.querySelector('[data-conversation-scroll], [class*="scrollBody"]')
-        if (scroller) {
-          const dist = scroller.scrollHeight - scroller.scrollTop - scroller.clientHeight
-          if (dist < 150) {
-            scroller.scrollTop = scroller.scrollHeight
-          }
-        }
+        // ui-conversation marks its transcript scroller with this attribute.
+        const scroller = document.querySelector('[data-conversation-scroll]')
+        if (scroller === null) return
+        const distance = scroller.scrollHeight - scroller.scrollTop - scroller.clientHeight
+        if (distance < 150) scroller.scrollTop = scroller.scrollHeight
       }
 
       ui.composer = {
@@ -306,7 +297,7 @@
         /** The hero page's composer card as of this pass, or null off the hero page. */
         heroCard() { return heroCard },
         /** Whether the composer restyle applies to the page shown, as of this pass. */
-        isActive() { return active && !composerRestyleRetired },
+        isActive() { return active },
         /** A copy source changed, the composer-scope preference among them: read again now. */
         onCopyChange: readState,
         onPointerDown: focusEditorOnPress,
@@ -320,12 +311,11 @@
       return () => {
         active = false
         heroCard = null
-        if (document.body.hasAttribute(COMPOSER_ATTR)) document.body.removeAttribute(COMPOSER_ATTR)
-        document.body.removeAttribute('data-dsh-claude-composer-hidden')
+        document.body.removeAttribute(COMPOSER_ATTR)
+        document.body.removeAttribute(COMPOSER_HIDDEN_ATTR)
         const marks = ['data-composer-variant', 'data-has-attachments', ATTACHMENT_TILE_ATTR, DRAFT_EMPTY_ATTR, CONTROL_ATTR, 'data-dsh-claude-context-meter']
-        for (let k = 0; k < marks.length; k++) {
-          const marked = document.querySelectorAll(`[${marks[k]}]`)
-          for (let i = 0; i < marked.length; i++) marked[i].removeAttribute(marks[k])
+        for (const mark of marks) {
+          for (const marked of document.querySelectorAll(`[${mark}]`)) marked.removeAttribute(mark)
         }
         if (meterRoom !== '') {
           meterRoom = ''

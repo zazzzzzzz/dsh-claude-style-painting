@@ -194,7 +194,6 @@
     const BRAND_DEEPSEEK = 'deepseek'
     /** What earlier builds stored for the DeepSeek choice, when it was labelled "Off". */
     const BRAND_DEEPSEEK_LEGACY = 'off'
-    const DEFAULT_BRAND = BRAND_CLAUDE
     /** The document attribute the stylesheet switches on. */
     const BRAND_ATTR = 'data-dsh-claude-brand'
 
@@ -212,8 +211,76 @@
     const MOTION_REDUCED = 'reduced'
     const MOTION_FULL = 'full'
     const MOTION_MODES = [MOTION_SYSTEM, MOTION_REDUCED, MOTION_FULL]
-    const DEFAULT_MOTION = MOTION_SYSTEM
     const MOTION_ATTR = 'data-dsh-claude-motion'
+
+    /**
+     * The composer caret's motion (src/features/caret/caret.js): `typing`
+     * transitions every move, `move` only explicit ones, `off` takes nothing
+     * over at all and leaves the browser's own caret in place.
+     */
+    const CARET_MOTION_OFF = 'off'
+    const CARET_MOTION_MOVE = 'move'
+    const CARET_MOTION_TYPING = 'typing'
+    const CARET_MOTIONS = [CARET_MOTION_OFF, CARET_MOTION_MOVE, CARET_MOTION_TYPING]
+
+    /**
+     * Who paints the colours, and who sets the type. `claude` is the skin's own
+     * palette (or typefaces); `host` leaves the host's colour (or font) tokens
+     * to the host and to whatever other theme plugin writes them — a wallpaper
+     * plugin's glass, say — and the skin's own surfaces read those tokens
+     * through its private aliases. Each choice rides <body> as its attribute,
+     * and the stylesheet gates every rule that writes the host's tokens on it.
+     */
+    const PALETTE_CLAUDE = 'claude'
+    const PALETTE_HOST = 'host'
+    const PALETTES = [PALETTE_CLAUDE, PALETTE_HOST]
+    const PALETTE_ATTR = 'data-dsh-claude-palette'
+    const TYPEFACE_CLAUDE = 'claude'
+    const TYPEFACE_HOST = 'host'
+    const TYPEFACES = [TYPEFACE_CLAUDE, TYPEFACE_HOST]
+    const TYPEFACE_ATTR = 'data-dsh-claude-typeface'
+
+    /**
+     * The mascot on the composer, chosen apart from the brand. `brand` follows
+     * the brand (the crab under Claude, Deepy under DeepSeek); `crab` and
+     * `deepy` pick one whatever the brand; `off` shows none. The resolved
+     * mascot (`crab`, `deepy` or `off`) rides <body> as MASCOT_ATTR.
+     *
+     * MASCOT_SCOPES says where it stands: the home page alone, or the home page
+     * and the conversation.
+     */
+    const MASCOT_BRAND = 'brand'
+    const MASCOT_CRAB = 'crab'
+    const MASCOT_DEEPY = 'deepy'
+    const MASCOT_OFF = 'off'
+    const MASCOTS = [MASCOT_BRAND, MASCOT_CRAB, MASCOT_DEEPY, MASCOT_OFF]
+    const MASCOT_ATTR = 'data-dsh-claude-mascot'
+    const MASCOT_SCOPE_HOME = 'home'
+    const MASCOT_SCOPE_ALL = 'all'
+    const MASCOT_SCOPES = [MASCOT_SCOPE_HOME, MASCOT_SCOPE_ALL]
+
+    /**
+     * Feature switches: one boolean preference per feature that replaces or
+     * moves a host control, all on by default. src/entry.js's FEATURES table
+     * names each feature's key (`pref`), and switching one off runs that
+     * feature's teardown, which hands its surface back to the host.
+     *
+     * `chatAnimations` is the one switch over the ported chat-area effects —
+     * the follow, the automatic folding with its rolling door, the text fade,
+     * the file change rows and the send flight. It belongs here rather than
+     * among the live-read preferences because two of those five cannot be
+     * stopped by reading a preference: the file change rows take the host's two
+     * seat keys over (D32), and a seat registration only comes back when the
+     * feature is torn down whole (`fileMutationRow` is the key this replaced).
+     */
+    const FEATURE_PREF_DEFAULTS = {
+      permissionsControl: true,
+      workspaceView: true,
+      sidebarSearch: true,
+      turnStatus: true,
+      viewTabs: true,
+      chatAnimations: true,
+    }
 
     /**
      * Deepy's animations (src/features/mascot/whale.js), one sheet each under
@@ -253,6 +320,44 @@
     }
 
     /**
+     * The composer crab's animations (src/features/mascot/crab.js), drawn by
+     * scripts/draw-crab.py into src/assets/mascot/crab/: one sheet in the crab's
+     * colours and one ink mask per animation, inlined by the build as
+     * CRAB_SHEET_URLS.
+     *
+     * The crab is drawn on a 52×36 grid of cells at 2px a cell, feet on the
+     * bottom row, the right claw four cells in from the right edge. A sheet
+     * holds its animation's frames eight to a row, each cropped to `box` —
+     * `[x, y, width, height]` in cells — and every frame lasts CRAB_FRAME_MS,
+     * the pace of Claude Code's own crab. `still` is the frame shown for the
+     * animation when the reader asks for reduced motion. The keys are Deepy's,
+     * so the two share one state machine; `idle-wave` and `idle-laptop` (Claude
+     * Code's laptop routine, whole) are the crab's own idle extras.
+     */
+    const CRAB_FRAME_MS = 80
+    const CRAB_SHEETS = {
+      'idle': { frames: 24, box: [24, 20, 24, 16], still: 0 },
+      'idle-look': { frames: 31, box: [24, 20, 24, 16], still: 0 },
+      'idle-wave': { frames: 12, box: [24, 15, 24, 21], still: 0 },
+      'idle-laptop': { frames: 43, box: [14, 13, 34, 23], still: 0 },
+      'thinking': { frames: 32, box: [14, 4, 34, 32], still: 18 },
+      'typing': { frames: 6, box: [15, 22, 28, 14], still: 0 },
+      'music': { frames: 16, box: [22, 1, 30, 35], still: 0 },
+      'conducting': { frames: 24, box: [24, 12, 27, 24], still: 0 },
+      'building': { frames: 6, box: [15, 19, 28, 17], still: 0 },
+      'error': { frames: 24, box: [23, 11, 26, 25], still: 4 },
+      'happy': { frames: 32, box: [18, 6, 34, 30], still: 3 },
+      'notification': { frames: 16, box: [24, 8, 24, 28], still: 0 },
+      'compacting': { frames: 20, box: [21, 20, 30, 16], still: 3 },
+      'sleeping': { frames: 32, box: [23, 3, 29, 33], still: 0 },
+      'waking': { frames: 12, box: [24, 4, 24, 32], still: 11 },
+      'poke-left': { frames: 10, box: [24, 20, 27, 16], still: 0 },
+      'poke-right': { frames: 10, box: [21, 20, 27, 16], still: 0 },
+      'tickle': { frames: 16, box: [23, 18, 26, 18], still: 0 },
+      'drag': { frames: 8, box: [23, 12, 26, 22], still: 0 },
+    }
+
+    /**
      * The artwork layer (src/features/artwork/artwork.js): a standing character
      * and the decorative line drawings that belong to it, drawn behind the
      * application frame.
@@ -283,6 +388,62 @@
     /** The character the skin draws when the stored preference names none. */
     const DEFAULT_ARTWORK = 'diana'
 
+    /**
+     * Present while the ported chat-area follow is installed
+     * (src/features/chat-follow/). One rule hangs off it: a capped process
+     * group's body scrolls vertically alone, so the catch-up measures the same
+     * distance the host's own smooth scroll does. Switched off, the chat area
+     * is handed back untouched.
+     */
+    const CHAT_FOLLOW_ATTR = 'data-dsh-claude-chat-follow'
+    /**
+     * On the host's own "back to the end" button while the stream glide
+     * (src/features/chat-follow/chat-follow.js) is following on the conversation
+     * scroller: the glide holds the position off the end on purpose, which the
+     * host reads as the reader having left, so it renders that button although
+     * it is being followed. The stylesheet keeps it out of sight until the glide
+     * lets go; the host's own state is not touched.
+     */
+    const STREAM_GLIDE_ATTR = 'data-dsh-claude-stream-glide'
+    /**
+     * Present while the ported token reveal is installed
+     * (src/features/chat-reveal/): its step rules (reveal-rules.css) hang off it,
+     * and switching the feature off leaves the page with no trace of it.
+     */
+    const CHAT_REVEAL_ATTR = 'data-dsh-claude-chat-reveal'
+    /**
+     * On the real message row while the send bubble's stand-in is flying
+     * (src/features/chat-send/): the stylesheet hides that row, keeping its layout
+     * box so the stand-in can measure the destination from it every frame.
+     */
+    const CHAT_FLYING_ATTR = 'data-dsh-claude-send-flight'
+    /**
+     * On a node the skin owns purely for its own bookkeeping — the caret
+     * motion's probe container and the caret it draws. The shared scheduler
+     * ignores mutations against such a node (D6), so measuring or redrawing
+     * never wakes a pass that no feature needs.
+     */
+    const QUIET_ATTR = 'data-dsh-claude-quiet'
+    /**
+     * On the element the fold glide is pressing right now (src/features/chat-fold/
+     * fold-glide.js): while it stands, the elements inside lay out at their
+     * natural height instead of being squeezed by flex (fold-motion.css).
+     */
+    const CHAT_ROLLING_ATTR = 'data-dsh-claude-rolling'
+    /** On an editable surface once the caret motion has taken it over (src/features/caret/). */
+    const CARET_ATTR = 'data-dsh-claude-caret'
+    /** The drawn caret itself. */
+    const CARET_LAYER_ATTR = 'data-dsh-claude-caret-layer'
+    /** The drawn caret is visible right now. */
+    const CARET_VISIBLE_ATTR = 'data-dsh-claude-caret-visible'
+    /** On a parent lent the positioning context the drawn caret is placed against. */
+    const CARET_HOST_ATTR = 'data-dsh-claude-caret-host'
+    /**
+     * Present while the ported automatic folding is installed
+     * (src/features/chat-fold/): the stylesheet's live-detail rules hang off it,
+     * and switching the feature off hands the chat area back whole.
+     */
+    const CHAT_FOLD_ATTR = 'data-dsh-claude-chat-fold'
     /** Present while the skin takes over the sidebar footer (settings area + account row). */
     const FOOTER_ATTR = 'data-dsh-claude-footer-takeover'
     /**
@@ -295,17 +456,29 @@
     const BAN_LOCALE_EN = 'en'
     const BAN_LOCALE_ZH = 'zh'
     const BAN_LOCALES = [BAN_LOCALE_EN, BAN_LOCALE_ZH]
-    const DEFAULT_BAN_LOCALE = BAN_LOCALE_EN
     /** Present while the composer restyle applies to the page currently shown. */
     const COMPOSER_ATTR = 'data-dsh-claude-composer-active'
     /**
+     * Present while the composer restyle applies and a conversation tab other
+     * than the chat is up: the composer is chat-view-only, so the stylesheet
+     * drops the whole bottom area (src/features/composer/composer.js).
+     */
+    const COMPOSER_HIDDEN_ATTR = 'data-dsh-claude-composer-hidden'
+    /**
      * Present while the permission control is installed. The composer restyle
-     * hides the host's access-mode button and its statistics dialogs because
-     * this feature replaces them, and those rules also require this attribute:
-     * a permission control that is switched off hands them back while the rest
-     * of the composer restyle keeps running.
+     * hides the host's access-mode button because this feature replaces it,
+     * and that rule also requires this attribute: a permission control that is
+     * switched off hands the button back while the rest of the composer
+     * restyle keeps running.
      */
     const PERMISSIONS_ATTR = 'data-dsh-claude-permissions'
+    /**
+     * Present while the context statistics are installed
+     * (src/features/context-stats/context-stats.js). The host's two stat
+     * dialogs are hidden only under it: their numbers are read into the
+     * context popover instead, and switched off the feature hands them back.
+     */
+    const SESSION_STATS_ATTR = 'data-dsh-claude-session-stats'
     /**
      * Stamped on the host's own account menu card while it is open (Desktop
      * 0.1.7+). That card is the host's shared Menu portal and its class names
@@ -355,6 +528,12 @@
      */
     const WINDOW_BLUR_ATTR = 'data-dsh-window-blur'
     /**
+     * On the host's scroller around the settings page while the page is
+     * mounted (src/features/settings/settings.js): the stylesheet keeps the
+     * scrollbar's room there, so switching tabs never shifts the layout.
+     */
+    const SETTINGS_SCROLLER_ATTR = 'data-dsh-claude-settings-scroller'
+    /**
      * Which home layout is in force. The stylesheet branches on it, and the two
      * layouts differ only in arrangement — the hero's own markup is the host's
      * either way, so the switch is one attribute plus the panel registration.
@@ -396,9 +575,9 @@
     const HOME_LAYOUT_CLASSIC = 'classic'
     const HOME_LAYOUT_STUDIO = 'studio'
     const HOME_LAYOUTS = [HOME_LAYOUT_CLASSIC, HOME_LAYOUT_STUDIO]
-    const DEFAULT_HOME_LAYOUT = HOME_LAYOUT_STUDIO
     /** Composer surfaces the restyle may cover, in settings order. */
-    const COMPOSER_SCOPES = ['off', 'hero', 'conversation', 'all']
+    const COMPOSER_SCOPE_ALL = 'all'
+    const COMPOSER_SCOPES = ['off', 'hero', 'conversation', COMPOSER_SCOPE_ALL]
     /**
      * How eagerly the skin's popovers open on hover: `off` is click-only,
      * `account` auto-opens the sidebar account popover alone, and `all` adds the
@@ -408,7 +587,45 @@
     const AUTO_POPOVER_ACCOUNT = 'account'
     const AUTO_POPOVER_ALL = 'all'
     const AUTO_POPOVER_SCOPES = [AUTO_POPOVER_OFF, AUTO_POPOVER_ACCOUNT, AUTO_POPOVER_ALL]
-    const DEFAULT_AUTO_POPOVER = AUTO_POPOVER_ALL
+
+    /**
+     * Every preference and its default: the shipped behaviour, and what holds
+     * until the settings form answers. scripts/build.mjs holds this table to
+     * host/settings.js's PREFS_DEFAULT, key for key and value for value. A
+     * boolean preference is on unless stored as an explicit `false`.
+     */
+    const PREF_DEFAULTS = {
+      brand: BRAND_CLAUDE,
+      motion: MOTION_SYSTEM,
+      collapseFooter: true,
+      autoPopover: AUTO_POPOVER_ALL,
+      composerScope: COMPOSER_SCOPE_ALL,
+      modelPicker: true,
+      quickProviders: [],
+      username: '',
+      banLocale: BAN_LOCALE_EN,
+      homeLayout: HOME_LAYOUT_STUDIO,
+      artwork: DEFAULT_ARTWORK,
+      palette: PALETTE_CLAUDE,
+      typeface: TYPEFACE_CLAUDE,
+      mascot: MASCOT_BRAND,
+      mascotScope: MASCOT_SCOPE_ALL,
+      caretMotion: CARET_MOTION_TYPING,
+      ...FEATURE_PREF_DEFAULTS,
+    }
+
+    /** The preferences whose value is one of a fixed set; any other stored value reads as the default. */
+    const PREF_CHOICES = {
+      motion: MOTION_MODES,
+      composerScope: COMPOSER_SCOPES,
+      banLocale: BAN_LOCALES,
+      homeLayout: HOME_LAYOUTS,
+      palette: PALETTES,
+      typeface: TYPEFACES,
+      mascot: MASCOTS,
+      mascotScope: MASCOT_SCOPES,
+      caretMotion: CARET_MOTIONS,
+    }
     /** Route that resolves the name this instance runs as, once; never polled. */
     const USERNAME_ROUTE = '/dsh-claude-painting/username'
     /** Route that forwards the HDSL launcher's account contract; never polled. */
@@ -429,13 +646,13 @@
     /** Wordmark aspect ratio; scripts/build.mjs sizes the sidebar word height from it (geometry lives in src/assets/claude-word.svg). */
     const CLAUDE_WORD_ASPECT = 512.22 / 121.54
 
-    const SANS = "'Anthropic Sans Web Text','Noto Sans SC','Source Han Sans SC',-apple-system,BlinkMacSystemFont,'Segoe UI','PingFang SC','Hiragino Sans GB','Microsoft YaHei','Helvetica Neue',Helvetica,Arial,sans-serif"
-    const SERIF = "'Anthropic Serif Web Text',Georgia,'Times New Roman','Noto Sans SC','Source Han Sans SC','PingFang SC','Hiragino Sans GB','Microsoft YaHei',sans-serif"
+    const SANS = "'Anthropic Sans Web Text','Claude Style Inter','Noto Sans SC','Source Han Sans SC',-apple-system,BlinkMacSystemFont,'Segoe UI','PingFang SC','Hiragino Sans GB','Microsoft YaHei','Helvetica Neue',Helvetica,Arial,sans-serif"
+    const SERIF = "'Anthropic Serif Web Text','Claude Style Noto Serif',Georgia,'Times New Roman','Noto Sans SC','Source Han Sans SC','PingFang SC','Hiragino Sans GB','Microsoft YaHei',sans-serif"
     /**
      * Conversation prose: Claude sets Latin text in the serif face and lets
      * Chinese fall through to a sans CJK — the serif Latin faces carry no CJK
      * glyphs, so the stack leads with serif and names the sans CJK families
      * after it. UI chrome keeps SANS; only markdown prose uses this.
      */
-    const PROSE = "'Anthropic Serif Web Text',Georgia,'Times New Roman','Noto Sans SC','Source Han Sans SC','PingFang SC','Hiragino Sans GB','Microsoft YaHei',sans-serif"
+    const PROSE = "'Anthropic Serif Web Text','Claude Style Noto Serif',Georgia,'Times New Roman','Noto Sans SC','Source Han Sans SC','PingFang SC','Hiragino Sans GB','Microsoft YaHei',sans-serif"
     const MONO = "'JetBrains Mono','Noto Sans SC','Source Han Sans SC','PingFang SC','Hiragino Sans GB','Microsoft YaHei',ui-monospace,'SF Mono','Fira Code',Consolas,'Liberation Mono',Menlo,Courier,monospace"

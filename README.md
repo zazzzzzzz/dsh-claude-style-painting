@@ -71,7 +71,41 @@
 >
 > 设置页的「立绘」一档可以把它整个关掉，关掉后画布回到原来的纯色。角色表与素材都放在插件包的 `assets/` 目录：`assets/themes.json` 登记每个角色的文件、纵横比与三条线色，`assets/<角色 id>/` 放文件本身。加一个角色就是放好文件再补一条登记，不用改代码，也不用重新构建。
 >
+> 立绘的画布接管与角色自带配色跟随设置页的「配色」一档：选「跟随宿主」时，画布交给宿主，角色不再改写页面配色，这一层也不再清掉宿主自己的表面色。
+>
 > 动态角色（一段带透明通道的 WebM）在同一个盒子里用 `<video>` 播放，静止帧作封面兼兜底；「动画效果」选「减弱」时停在静止帧上。
+
+## 设置
+
+设置页同时出现在设置对话框（「Claude Style」标签页）与插件页，分为五个分页：
+
+| 分页 | 设置项 |
+|---|---|
+| 通用 | 用户名、动画效果、悬停展开弹层、封号彩蛋语言 |
+| 外观 | 品牌标识、配色、字体、吉祥物、出现位置 |
+| 输入区 | 输入区重绘范围、首页版面、重绘模型选择器（及其下的快捷供应商）、重绘权限控件 |
+| 侧栏 | 折叠侧栏设置区、侧栏搜索、进行中 / 已归档视图 |
+| 对话 | 轮次状态行、聊天区动画效果、输入框插入符动效、对话 / 轨迹标签条 |
+
+每一项接管宿主界面的功能都有自己的开关，关闭后宿主原来的界面原样回来，不需要刷新页面。对话区的那几项动画（跟随、自动开合与卷帘门、新文字淡入、文件变更行、聊天气泡动效）合成一个「聊天区动画效果」开关，插入符动效仍是自己的三档。
+
+**与其他主题插件同时使用**：「配色」与「字体」选「跟随宿主」后，本插件不再改写宿主的颜色与字体，只保留布局和控件；颜色交给 DSH 自己，或者交给同时启用的其他主题插件。例如与 [dsh-wallpaper-engine](https://github.com/elysia395/dsh-wallpaper-engine) 一起用时，壁纸透过侧栏与对话区显示出来，插件自己的弹层随壁纸插件的玻璃效果变成半透明并模糊背后的画面。**与 [dsh-chat-ux](https://github.com/alm-allen/dsh-chat-ux) 同时使用时**：那个插件实现了同一批聊天区交互（卷帘门、自动开合、文字淡入、文件变更行、聊天气泡动效、插入符动效），两套同时生效会互相拦点击、抢同一批按钮。所以本插件在检测到它时让位：设置页「对话」页的「聊天区动画效果」与「输入框插入符动效」两行控件禁用，但仍显示你自己设的值，下面另起一行用强调色注明「该选项由 dsh-chat-ux 管理」；你的设置不会被改写，卸载 dsh-chat-ux 之后原样生效。
+
+**聊天区跟随**：思考行收起、工具调用行出现这些结构时刻，贴着底部的读者被交还给系统自己的跟随，内容成片到达时不再停在离底部几十像素的地方；「标准」与「简洁」档里封顶的过程组（思考与工具输出收在一个带滚动条的组体里）同样补到底部。补到底部走的是曲线：零散到达的字收得住尾巴，成片涌进的文字以一段稳速滑过去，再落到末尾。流式输出期间主滚动条的新内容也沿这条曲线推进，不再一帧写到底；输出很快时最新几行会短暂拖在屏幕下缘之外，流一停就滑到位。你自己发出的消息不走这条曲线：宿主把它滚进视野的那一下照旧一步到位。读者自己滚动离开底部之后，插件不再插手，直到他自己回到底部。
+
+**思考与过程自动开合**：模型还在思考时思考行开着，思考停下就收回去；运行中的过程组自动展开，这一段结束再收起。读者自己按过的行或组在当时的阶段里不再被改动。
+
+**聊天气泡动效**：提交消息时输入卡片原样浮起、一路收成那条气泡，草稿里的字跟着形状重新排，落地正好接上真实的消息行。
+
+**文件变更行**：run_code 程序里派发出去的写入与编辑带上行尾的 `+n -m` 与可展开的改动卡片，路径可点开文件；失败与中断的行保留裁决信息。
+
+**新文字淡入**：流式回答里新出现的字符先淡后实（约 0.12 秒），并按到达次序略作错开；整段一次到达的内容、几千字的突发与刚被折叠重排过的文字保持本色。
+
+**卷帘门过渡**：点开或收起一行（工具卡片、思考行、命令卡片）以及过程组时，高度逐帧变化，下方内容被真的推开或收回；门只走读者看得见的那一段，内容再长也是同一速度，多张卡片的展开体整扇门一起走。它与展开体的入场淡入一起挂在「聊天区动画效果」这个开关上。
+
+**输入框插入符动效**：输入框里的光标由插件自己绘制，移动时滑过去；提问卡片的作答框与排队消息的行内编辑框同样覆盖。设置页的「对话」页有三档：每一格（默认）、只在移动时、关闭。
+
+**吉祥物**：输入框上沿站着一只像素小伙伴，随智能体的工作状态换动画（思考、写回答与调用工具、多个会话同时工作、子代理、等你操作、压缩上下文、完成、失败、睡着）。「跟随品牌」在 Claude 品牌下是像素螃蟹，在 DeepSeek 品牌下是小鲸鱼 Deepy，也可以固定选一个或者关闭；「出现位置」决定它只在新会话页出现，还是新会话页和对话页都出现。
 
 ## 字体
 
@@ -86,6 +120,10 @@
 | Anthropic Sans Web Text | 界面 / UI | [`fonts/AnthropicSansWebText.ttf`](https://github.com/Nwflower/dsh-claude-style/raw/main/fonts/AnthropicSansWebText.ttf) |
 | Anthropic Serif Web Text | 对话正文 / Markdown | [`fonts/AnthropicSerifWebText.ttf`](https://github.com/Nwflower/dsh-claude-style/raw/main/fonts/AnthropicSerifWebText.ttf) |
 | JetBrains Mono Variable | 代码 / 代码块 | [`fonts/JetBrainsMonoVariable.ttf`](https://github.com/Nwflower/dsh-claude-style/raw/main/fonts/JetBrainsMonoVariable.ttf)、[`fonts/JetBrainsMonoItalicVariable.ttf`](https://github.com/Nwflower/dsh-claude-style/raw/main/fonts/JetBrainsMonoItalicVariable.ttf) |
+| Inter | 没有 Anthropic Sans 时的界面字体 | [`fonts/InterVariable.woff2`](https://github.com/Nwflower/dsh-claude-style/raw/main/fonts/InterVariable.woff2) |
+| Noto Serif | 没有 Anthropic Serif 时的正文字体 | [`fonts/NotoSerifVariable.woff2`](https://github.com/Nwflower/dsh-claude-style/raw/main/fonts/NotoSerifVariable.woff2) |
+
+JetBrains Mono、Inter 与 Noto Serif 采用 SIL Open Font License 1.1，随 npm 包分发，无需任何操作。Inter 与 Noto Serif 的字高、字宽与两款 Anthropic 字体几乎一致，没有启用 Anthropic 字体时由它们代替，界面与正文的排版不会因此变样；两者只含 Anthropic 字体覆盖的拉丁字符，中文照旧使用系统中文字体。
 
 Anthropic 字体启用（二选一）：
 
@@ -123,6 +161,8 @@ dsh plugin --profile web add dsh-claude-style                  # npm 包（推�
 ## 鸣谢
 
 像素小鲸鱼 Deepy 的动画帧图来自 calmly-eating-bugs（[@wp3171216237](https://github.com/wp3171216237)）绘制的 Deepy 小鲸鱼主题包。
+
+像素螃蟹（Clawd）是 Anthropic 的角色形象，相关权利归 Anthropic 所有。螃蟹掏出电脑敲代码的动画取自 Claude Code，其余各个状态的动画由本项目按这一形象绘制。螃蟹的帧图不适用 MIT 许可（见 [LICENSE](LICENSE)）。本插件是非官方的爱好者作品，与 Anthropic 没有关联，也未获其认可。
 
 ## 友链
 

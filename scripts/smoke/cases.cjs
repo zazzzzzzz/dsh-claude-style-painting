@@ -23,6 +23,9 @@ function contrast(a, b) {
 function commonChecks(r) {
   check('nothing the skin runs leaves an uncaught error or an unhandled rejection',
     Array.isArray(r.uncaught) && r.uncaught.length === 0, (r.uncaught || []).join(' | ').slice(0, 600))
+  check("the model trigger rule reaches the host's trigger alone: a menu nested in the seat stays a block, the marked seat root stays hidden",
+    !r.composerRestyle || (r.modelSeat.trigger === 'inline-flex' && r.modelSeat.nestedMenu === 'block' && r.modelSeat.markedRoot === 'none'),
+    JSON.stringify(r.modelSeat))
   check('the home layout attribute follows the preference',
     r.homeLayoutAttr === r.homeLayoutExpected,
     JSON.stringify({ attribute: r.homeLayoutAttr, expected: r.homeLayoutExpected }))
@@ -66,7 +69,7 @@ const CASES = {
         greeting.held === greeting.low && typeof greeting.high === 'string' && greeting.high !== 'Host greeting' &&
         greeting.high !== greeting.low,
       JSON.stringify(greeting))
-    check('the classic hero page carries no crab', r.classicCrab === false, JSON.stringify(r.classicCrab))
+    check('the classic hero page carries the crab too', r.classicCrab === true, JSON.stringify(r.classicCrab))
     const palette = r.claudePalette || {}
     check('the Claude brand keeps its ivory and warm-black canvases and the clay accent',
       palette.canvas === 'rgb(252, 252, 251)' && palette.accent === '#d97757' && !!palette.dark &&
@@ -156,6 +159,9 @@ const CASES = {
       JSON.stringify({ aligned: r.context.aligned, edgeAligned: r.context.edgeAligned }))
     check('leaving the meter closes the popover and takes the block with it',
       r.context.closedAfterLeave === true, JSON.stringify(r.context.closedAfterLeave))
+    check('the meter\'s room survives a reading taken with no box',
+      r.context.roomBefore !== '' && /^\d+px$/.test(r.context.roomAfter || ''),
+      JSON.stringify({ before: r.context.roomBefore, after: r.context.roomAfter }))
     commonChecks(r)
   },
   // The auto mode cases: the ladder follows the host catalog, so a third-party
@@ -267,13 +273,13 @@ const CASES = {
     check('the compact row carries no trigger of its own; the meter still opens the panel',
       r.context.panelStamped === true && r.context.opened === true && r.context.expanded === 'true',
       JSON.stringify({ stamped: r.context.panelStamped, opened: r.context.opened, expanded: r.context.expanded }))
-    check('with no projection frame yet the place is the compact one: three time rows, one usage row',
-      same(r.context.skeletonSections, ['Session statistics', 'Token usage']) &&
+    check('with no projection frame yet the place is the compact one: four items in a 2x2 grid, no section headings',
+      same(r.context.skeletonSections, []) &&
         r.context.skeletonRows === 4 && r.context.skeletonItemHeight === 37,
       JSON.stringify({ sections: r.context.skeletonSections, rows: r.context.skeletonRows, itemHeight: r.context.skeletonItemHeight }))
-    check('the compact block keeps four figures: the total time, the first-token average, the output speed and the cache-hit share',
+    check('the compact block keeps four figures: the total time, the first-token average, the output speed and the cache-hit share in one 2x2 grid with no section headings',
       r.context.skeletonGone === true &&
-        same(r.context.sections, ['Session statistics', 'Token usage']) &&
+        same(r.context.sections, []) &&
         same(r.context.labels, ['Total time', 'Avg time to first token (TTFT)', 'Tokens per second (TPS)', 'Cache hit']) &&
         same(r.context.values, ['1.6s', '0.8s', '105 tok/s', '90%']),
       JSON.stringify({ labels: r.context.labels, values: r.context.values }))
@@ -344,16 +350,15 @@ const CASES = {
       rows('models') === 6 && said('models', /^Show 2 more$/),
       JSON.stringify({ rows: rows('models'), texts: renders.models && renders.models.texts.slice(-3) }))
     const mascot = r.mascot || {}
-    check('the crab stands on the hero card on its resting frame, drawn from the inlined crab strip and rod mask',
-      mascot.mounted === true && mascot.frame === '0' && mascot.body === true && mascot.rod === true &&
-        mascot.bodyShift === '0px', JSON.stringify(mascot))
-    check('the pointer leaving the crab plays the routine and it ends on the resting frame, without waking a pass',
-      mascot.early !== '0' && mascot.early !== '' && mascot.earlyShift === `${-68 * Number(mascot.early)}px` &&
-        mascot.settled === '0' && mascot.passesDuring === 0,
+    check('the crab stands on the hero card idling, drawn from its inlined sheet and ink mask',
+      mascot.mounted === true && mascot.ready === true && mascot.animation === 'idle' && mascot.body === true && mascot.ink === true,
       JSON.stringify(mascot))
-    check('a click reaches the crab; with the animation choice on "reduced" only a click plays the routine',
-      mascot.reachable === true && mascot.reducedAttr === 'reduced' && mascot.reducedLeave === '0' &&
-        mascot.clicked !== '0' && mascot.clickSettled === '0',
+    check('a click on its left half reaches the crab and pokes it; the poke plays back to idle without waking a pass',
+      mascot.reachable === true && mascot.poked === 'poke-left' && mascot.afterPoke === 'idle' && mascot.passesDuring === 0,
+      JSON.stringify(mascot))
+    check('with the animation choice on "reduced" it holds the idle still frame; a click still pokes it',
+      mascot.reducedAttr === 'reduced' && mascot.stillFrame === 'translate(0px, 0px)' && mascot.stillAnimations === 0 &&
+        mascot.reducedClick === 'poke-left',
       JSON.stringify(mascot))
     check('the crab leaves with the hero page', mascot.afterHero === false, JSON.stringify(mascot))
     check('the studio hero mark is on the document on the hero page and off it elsewhere, and the studio rules reach the stack',
@@ -534,10 +539,364 @@ const CASES = {
       JSON.stringify(failed))
     commonChecks(r)
   },
+  switches(r) {
+    check('apply() completes', r.applyError === null, r.applyError)
+    check('no feature reported a failure', r.errors.length === 0, r.errors.join(' | '))
+    const sw = r.switches || {}
+    const keys = Object.keys(sw.start || {})
+    const present = (marks, key) => !!marks && marks[key] > 0
+    check('every switched feature is on by default', keys.length === 5 && keys.every((key) => present(sw.start, key)), JSON.stringify(sw.start))
+    for (const step of sw.steps || []) {
+      check(`switching ${step.key} off leaves none of its marks and keeps the others`,
+        !present(step.off, step.key) && keys.filter((key) => key !== step.key).every((key) => present(step.off, key)),
+        JSON.stringify(step.off))
+      check(`switching ${step.key} back on brings it back, live`,
+        keys.every((key) => present(step.on, key)), JSON.stringify(step.on))
+    }
+    check('all switches off leave no switched feature on the page',
+      !!sw.allOff && keys.every((key) => !present(sw.allOff, key)), JSON.stringify(sw.allOff))
+    check('all switches back on bring every feature back', !!sw.allOn && keys.every((key) => present(sw.allOn, key)), JSON.stringify(sw.allOn))
+    commonChecks(r)
+  },
+  'switches-off'(r) {
+    check('apply() completes', r.applyError === null, r.applyError)
+    check('no feature reported a failure', r.errors.length === 0, r.errors.join(' | '))
+    const sw = r.switches || {}
+    const keys = Object.keys(sw.start || {})
+    check('a feature switched off before the page loads never installs',
+      keys.length === 5 && keys.every((key) => sw.start[key] === 0), JSON.stringify(sw.start))
+    check('switching them on installs every one, live',
+      !!sw.allOn && keys.every((key) => sw.allOn[key] > 0), JSON.stringify(sw.allOn))
+    commonChecks(r)
+  },
+  'host-palette'(r) {
+    check('apply() completes', r.applyError === null, r.applyError)
+    check('no feature reported a failure', r.errors.length === 0, r.errors.join(' | '))
+    const hp = r.hostPalette || {}
+    const host = hp.host || {}
+    check('under the host\'s colours and type the skin writes none of the host\'s tokens',
+      host.base === 'rgb(250, 250, 252)' && host.family === '"Host Sans", sans-serif', JSON.stringify(host))
+    check('and paints none of the host\'s frame: the sidebar keeps the host\'s fill, the conversation column and the canvases stay unpainted',
+      host.sidebar === 'rgb(244, 245, 250)' && host.conversation === 'rgba(0, 0, 0, 0)' &&
+        host.body === 'rgba(0, 0, 0, 0)' && host.html === 'rgba(0, 0, 0, 0)',
+      JSON.stringify(host))
+    check('the skin\'s own cards take the host\'s overlay layer, blurred behind',
+      host.popover === 'rgb(240, 241, 250)' && host.account === 'rgb(240, 241, 250)' && host.search === 'rgb(240, 241, 250)' &&
+        /blur\(16px\)/.test(host.popoverBlur || ''),
+      JSON.stringify(host))
+    check('the inverted chip becomes the host\'s hover plate with its primary ink',
+      host.group === 'rgba(10, 20, 30, 0.08)' && host.groupInk === 'rgb(17, 18, 19)', JSON.stringify(host))
+    check('the skin\'s display and code faces fall back to the host\'s',
+      host.heading === '"Host Sans", sans-serif' && host.code === '"Host Mono", monospace', JSON.stringify(host))
+    const wall = hp.wallpaper || {}
+    check('a wallpaper plugin\'s cleared canvas and glass reach the sidebar and the cards',
+      wall.sidebar === 'rgba(0, 0, 0, 0)' && wall.popover === 'rgba(255, 255, 255, 0.6)' &&
+        wall.account === 'rgba(255, 255, 255, 0.6)' && wall.body === 'rgba(0, 0, 0, 0)',
+      JSON.stringify(wall))
+    const claude = hp.claude || {}
+    check('back on Claude the skin\'s palette and faces return',
+      claude.base === '#fcfcfb' && claude.body === 'rgb(252, 252, 251)' && claude.account === 'rgb(252, 252, 251)' &&
+        claude.popover === 'rgb(255, 255, 255)' && /Anthropic Serif Web Text/.test(claude.heading || ''),
+      JSON.stringify(claude))
+    commonChecks(r)
+  },
+  settings(r) {
+    check('apply() completes', r.applyError === null, r.applyError)
+    check('no feature reported a failure', r.errors.length === 0, r.errors.join(' | '))
+    const settings = r.settings || {}
+    check('the settings section registers with the settings dialog', settings.registered === true, JSON.stringify(settings.registered))
+    const expected = {
+      general: ['username', 'motion', 'autoPopover', 'banLocale'],
+      appearance: ['brand', 'palette', 'typeface', 'mascot', 'mascotScope', 'artwork'],
+      composer: ['composerScope', 'homeLayout', 'modelPicker', 'quickProviders', 'permissionsControl'],
+      sidebar: ['collapseFooter', 'sidebarSearch', 'workspaceView'],
+      conversation: ['turnStatus', 'chatAnimations', 'caretMotion', 'viewTabs'],
+    }
+    const pages = settings.pages || {}
+    for (const tab of Object.keys(expected)) {
+      const page = pages[tab] || {}
+      check(`the ${tab} tab is selected in the five-tab strip and carries its rows, every sub-row enabled`,
+        JSON.stringify(page.tabs) === JSON.stringify(Object.keys(expected)) && page.selected === tab &&
+          JSON.stringify(page.rows) === JSON.stringify(expected[tab]) && Array.isArray(page.disabled) && page.disabled.length === 0,
+        JSON.stringify(page))
+    }
+    const off = settings.parentsOff || {}
+    check('a sub-row greys out while its parent is off: the mascot\'s place with the mascot off, the quick providers with the model picker off',
+      !!off.appearance && JSON.stringify(off.appearance.disabled) === '["mascotScope"]' &&
+        !!off.composer && JSON.stringify(off.composer.disabled) === '["quickProviders"]',
+      JSON.stringify(off))
+    commonChecks(r)
+  },
+  'crab-states'(r) {
+    check('apply() completes', r.applyError === null, r.applyError)
+    check('no feature reported a failure', r.errors.length === 0, r.errors.join(' | '))
+    const crab = r.states || {}
+    const is = (state, animation, place) => !!state && state.animation === animation && state.place === place && state.ready === true
+    check('picked under the Claude brand, the crab stands on the home card idling, from its inlined sheet',
+      is(crab.home, 'idle', 'card') && /^url\("data:image\/png/.test(crab.home.sheet), JSON.stringify(crab.home))
+    check('its frames change on its own node without waking a pass',
+      !!crab.idle && crab.idle.before !== crab.idle.after && crab.idle.passes === 0, JSON.stringify(crab.idle))
+    check('a click on its left half pokes it', is(crab.poke, 'poke-left', 'card'), JSON.stringify(crab.poke))
+    check('on the conversation page it stands on the input area: thinking, typing, the hard hat with three sessions at work',
+      is(crab.thinking, 'thinking', 'stack') && is(crab.typing, 'typing', 'stack') && is(crab.building, 'building', 'stack'),
+      JSON.stringify({ thinking: crab.thinking, typing: crab.typing, building: crab.building }))
+    check('an approval puts it on the approval panel with the notification',
+      is(crab.notification, 'notification', 'panel'), JSON.stringify(crab.notification))
+    check('compaction, the celebration when it ends, and the error shake over it',
+      is(crab.compacting, 'compacting', 'stack') && is(crab.celebrating, 'happy', 'stack') && is(crab.failed, 'error', 'stack'),
+      JSON.stringify({ compacting: crab.compacting, celebrating: crab.celebrating, failed: crab.failed }))
+    // The error sheet's still frame is its fifth: column 4 of 26-cell-wide frames at 2px a cell.
+    check('reduced motion holds the error sheet\'s still frame',
+      crab.stillAttr === 'reduced' && !!crab.still && crab.still.before === '-208px 0px' && crab.still.after === '-208px 0px',
+      JSON.stringify(crab.still))
+    check('it idles after work, sleeps after a quiet minute, and a pointer move wakes it',
+      is(crab.afterWork, 'idle', 'stack') && is(crab.asleep, 'sleeping', 'stack') && is(crab.woken, 'waking', 'stack'),
+      JSON.stringify({ afterWork: crab.afterWork, asleep: crab.asleep, woken: crab.woken }))
+    check('it leaves with the conversation, and takes its anchor mark along', crab.gone === true, JSON.stringify(crab.gone))
+    check('kept to the home page it stays off the conversation and stands on the home card',
+      crab.backInConversation === true && crab.homeOnly === null && is(crab.homeOnlyHero, 'idle', 'card'),
+      JSON.stringify({ back: crab.backInConversation, homeOnly: crab.homeOnly, hero: crab.homeOnlyHero }))
+    check('with the mascot off it leaves; picking Deepy puts the whale out instead',
+      crab.off === null && crab.deepyPicked === true, JSON.stringify({ off: crab.off, deepy: crab.deepyPicked }))
+    commonChecks(r)
+  },
+  'chat-follow'(r) {
+    check('apply() completes', r.applyError === null, r.applyError)
+    check('no feature reported a failure', r.errors.length === 0, r.errors.join(' | '))
+    const follow = r.chatFollow || {}
+    check('the follow feature marks the document, and only a capped process body is clipped to one axis',
+      follow.marked === true && follow.overflowX === 'hidden' && follow.expandedOverflowX === 'auto',
+      JSON.stringify(follow))
+    // A browser clamps a scroll position a few pixels inside
+    // `scrollHeight - clientHeight` when a child's own overflow or a scrollbar
+    // rounds it, so "at the end" means "inside that clamp", and the point of the
+    // check is that it got there by walking.
+    const AT_END_PX = 6
+    check('a structural moment hands the scroll back: the position was 60px off the end and lands at it',
+      follow.before === 60 && follow.after <= AT_END_PX && follow.after < follow.before,
+      JSON.stringify({ before: follow.before, after: follow.after }))
+    check('a reader who scrolled away himself is left where he is',
+      follow.readerBefore === 60 && follow.readerAfter === 60,
+      JSON.stringify({ before: follow.readerBefore, after: follow.readerAfter }))
+    // The catch-up is a curve, not a jump: a frame later the capped body is
+    // still well short of its end, still moving at a tenth of a second, and held
+    // at the end once the glide has run out (scroll-ease.js).
+    check('the capped body walks to its end instead of jumping: short a frame later, still moving at a tenth of a second, at the end afterwards',
+      follow.catchUpEarly > 200 && follow.catchUpMid < follow.catchUpEarly && follow.catchUpMid > AT_END_PX &&
+        follow.catchUpDone <= AT_END_PX && follow.catchUpLate <= AT_END_PX,
+      JSON.stringify({
+        early: follow.catchUpEarly, mid: follow.catchUpMid,
+        done: follow.catchUpDone, late: follow.catchUpLate,
+      }))
+    // While the host's streaming mark is on the page, the end its own follow
+    // writes is taken back before the frame paints and the spring walks the
+    // distance (chat-follow.js, scroll-ease.js).
+    check('the stream glide takes the host\'s own pin back and walks it: well short a frame later, still walking, at the end afterwards',
+      follow.glideEarly > 100 && follow.glideMid < follow.glideEarly && follow.glideMid > AT_END_PX &&
+        follow.glideDone <= AT_END_PX,
+      JSON.stringify({
+        early: follow.glideEarly, mid: follow.glideMid, done: follow.glideDone,
+        diag: follow.glideDiag,
+      }))
+    check('a message the reader just sent is not taken back: the host\'s jump to it stands',
+      follow.submitGap <= AT_END_PX && follow.submitGapLate <= AT_END_PX,
+      JSON.stringify({ gap: follow.submitGap, late: follow.submitGapLate }))
+    check('the host\'s own back-to-the-end button is kept out of sight while the glide follows, and shows again after',
+      follow.glideButtonMarked === true && follow.glideButtonBack === true,
+      JSON.stringify({ marked: follow.glideButtonMarked, back: follow.glideButtonBack }))
+  },
+  caret(r) {
+    check('apply() completes', r.applyError === null, r.applyError)
+    check('no feature reported a failure', r.errors.length === 0, r.errors.join(' | '))
+    const caret = r.caret || {}
+    const on = caret.on || {}
+    const off = caret.off || {}
+    const back = caret.back || {}
+    check('the focused composer surface gets a drawn caret and the native one gives way',
+      on.layer === true && on.visible === true && on.marked === true && on.nativeHidden === true,
+      JSON.stringify(on))
+    check('the drawn caret is placed with a transform',
+      typeof on.transform === 'string' && on.transform.indexOf('translate(') === 0, JSON.stringify(on.transform))
+    check('off takes the drawn caret and the mark away and gives the native caret back',
+      off.layer === false && off.marked === false && off.nativeHidden === false, JSON.stringify(off))
+    check('switching it back draws it again', back.layer === true && back.marked === true, JSON.stringify(back))
+    const plain = caret.plain || {}
+    check('a textarea under the composer seat is taken over the same way',
+      plain.layer === true && plain.marked === true && plain.visible === true && plain.nativeHidden === true,
+      JSON.stringify(plain))
+    const caretReduced = caret.reduced || {}
+    check('the animation choice stills the drawn caret without taking it away (D26)',
+      caretReduced.layer === true &&
+        String(caretReduced.transition).split(',').every(value => value.trim() === '0s') &&
+        caretReduced.animation === 'none',
+      JSON.stringify(caretReduced))
+  },
+  'chat-fold'(r) {
+    check('apply() completes', r.applyError === null, r.applyError)
+    check('no feature reported a failure', r.errors.length === 0, r.errors.join(' | '))
+    const fold = r.fold || {}
+    check('a running thinking row and a running process group are opened, and the group carries its label half',
+      fold.thinkOpen === true && fold.groupOpen === true && fold.openMark === true && fold.liveDetail === true &&
+        fold.label === 'Working' && fold.labelName === 'Working' && fold.spread === '56px',
+      JSON.stringify(fold))
+    check('a tier that does not cap its body is never pressed',
+      fold.expandedUntouched === true && (fold.clicks || {}).expanded === 0, JSON.stringify(fold.clicks))
+    const after = fold.after || {}
+    check('when the reasoning stops and the section ends, both fold back',
+      after.thinkOpen === false && after.groupOpen === false && after.openMark === false && after.liveDetail === false,
+      JSON.stringify(after))
+    check('a group the reader opened himself in that phase stays open', fold.readerOpen === true, JSON.stringify(fold.readerOpen))
+    const glide = fold.glide || {}
+    const glideAfter = glide.after || {}
+    check('a reader press on a folding row is intercepted, the real element is pressed with the door marked, and the press is handed back',
+      glide.rolling === true && glide.clipped === true && glide.clicksDuringRoll === 0 &&
+        glideAfter.bodyGone === true && glideAfter.rollingAnywhere === false && glideAfter.clicks === 1,
+      JSON.stringify(glide))
+    const glideOpen = glide.open || {}
+    const glideOpenAfter = glide.openAfter || {}
+    check('the opening direction rolls the body the host inserts and hands the styles back when the door lands',
+      glideOpen.inserted === true && glideOpen.rolling === true &&
+        glideOpenAfter.present === true && glideOpenAfter.rolling === false,
+      JSON.stringify({ open: glideOpen, after: glideOpenAfter }))
+    // The switch covers the door and the entrance fade as well (D29/D32).
+    const animationsOff = fold.animationsOff || {}
+    check('switching Automatic folding off stops the door, the entrance fade and the interception together',
+      fold.entranceOn === '0.12s, 0.12s' && animationsOff.mark === false && animationsOff.entrance === '0s' &&
+        animationsOff.immediateClicks === 1 && animationsOff.rolling === false &&
+        (fold.animationsBack || {}).mark === true,
+      JSON.stringify({ on: fold.entranceOn, off: animationsOff, back: fold.animationsBack }))
+  },
+  'chat-reveal'(r) {
+    check('apply() completes', r.applyError === null, r.applyError)
+    check('no feature reported a failure', r.errors.length === 0, r.errors.join(' | '))
+    const reveal = r.reveal || {}
+    const opening = reveal.opening || {}
+    const grown = reveal.grown || {}
+    const settled = reveal.settled || {}
+    const off = reveal.off || {}
+    const back = reveal.back || {}
+    const reduced = reveal.reduced || {}
+    check('characters arriving in a streaming container are registered as step highlights from the faintest step',
+      opening.mark === true && opening.total > 0 && opening.steps > 0, JSON.stringify(opening))
+    check('more characters arriving join them', grown.total > 0 && grown.steps >= 1, JSON.stringify(grown))
+    check('once faded they leave the registry', settled.total === 0, JSON.stringify(settled))
+    check('the preference withdraws the engine whole, and switching it back installs it again',
+      off.total === 0 && off.mark === false && back.mark === true, JSON.stringify({ off: off, back: back }))
+    check('the animation choice reaches it too: Reduced withdraws the engine, not the system query (D26)',
+      reduced.total === 0 && reduced.mark === false, JSON.stringify(reduced))
+    const flip = reveal.systemFlip || {}
+    check('the system setting flipping under "follow the system" takes the running engine with it, and brings it back',
+      (flip.reduced || {}).total === 0 && (flip.reduced || {}).mark === false && (flip.back || {}).mark === true,
+      JSON.stringify(flip))
+  },
+  'chat-files'(r) {
+    check('apply() completes', r.applyError === null, r.applyError)
+    check('no feature reported a failure', r.errors.length === 0, r.errors.join(' | '))
+    const files = r.files || {}
+    const seats = files.seats || []
+    const collapsed = files.collapsed || {}
+    const expanded = files.expanded || {}
+    const failed = files.failed || {}
+    const running = files.running || {}
+    const escalated = files.escalated || {}
+    check('both file tools are claimed from the tool view seat below the host rows',
+      seats.length === 2 && seats[0].seat === 'edit' && seats[1].seat === 'write' && seats[0].priority === -1,
+      JSON.stringify(seats))
+    check('a settled edit reads as a row with its tool, variant and state, the shortened path and the +n -m tail',
+      (collapsed.root || {}).variant === 'edit' && (collapsed.root || {}).state === 'ok' &&
+        collapsed.texts.includes('app.js') && collapsed.texts.includes('+1') && collapsed.texts.includes('-1') &&
+        typeof collapsed.summary === 'string' && collapsed.summary.includes('dsh-claude-file-link'),
+      JSON.stringify({ root: collapsed.root, texts: collapsed.texts, summary: collapsed.summary }))
+    check('the title comes from the seat copy and the row itself opens and closes',
+      (collapsed.disclosure || {}).title === 't:tool.title.edit' && (collapsed.disclosure || {}).expandOnRowClick === true &&
+        (collapsed.disclosure || {}).keepContentWhenOpen === true,
+      JSON.stringify(collapsed.disclosure))
+    check('expanded, the hunks the result metadata reported go into the diff card at the chat line cap',
+      (expanded.diff || {}).maxLines === 9 && ((expanded.diff || {}).diffs || []).length === 1 &&
+        (expanded.diff || {}).className === 'dsh-claude-file-diff' && expanded.texts.includes('t:row.inspect'),
+      JSON.stringify(expanded.diff))
+    check('a failed call draws no diff and no path link, and its verdict colours the summary',
+      (failed.root || {}).state === 'error' && failed.diff === null && typeof failed.summary === 'string' &&
+        failed.summary.includes('dsh-claude-file-error') && failed.texts.includes('ToolError: permission_denied') &&
+        failed.hiddenText === 't:row.failed',
+      JSON.stringify({ root: failed.root, summary: failed.summary, hidden: failed.hiddenText }))
+    check('a write that is still running shows the change its arguments describe, with the running state announced',
+      (running.diff || {}).className === 'dsh-claude-file-diff' && running.hiddenText === 't:row.running',
+      JSON.stringify({ diff: running.diff && running.diff.className, hidden: running.hiddenText }))
+    check("a call whose change cannot be derived keeps the host's IN/OUT card",
+      escalated.diff === null && escalated.io !== null && escalated.texts.includes('t:row.input') && escalated.texts.indexOf('t:row.output') === -1,
+      JSON.stringify({ diff: escalated.diff, io: escalated.io !== null, texts: escalated.texts }))
+    check('the switch hands both seat keys back and takes them again, without a reload',
+      files.offSeats === 0 && files.backSeats === 2, JSON.stringify({ off: files.offSeats, back: files.backSeats }))
+    // The other plugin coming and going mid-session (src/shared/peer-plugin.js):
+    // the decision is re-taken, not frozen at install.
+    const peerOn = files.peerOn || {}
+    const peerOff = files.peerOff || {}
+    check('the other plugin arriving mid-session takes the seat keys and the ported marks down',
+      peerOn.seats === 0 && peerOn.foldMark === false && peerOn.revealMark === false, JSON.stringify(peerOn))
+    check('and leaving hands them back, without a reload',
+      peerOff.seats === 2 && peerOff.foldMark === true, JSON.stringify(peerOff))
+  },
+  // The other chat-behaviour plugin on the page: the ported features must hand
+  // their behaviour over whole (src/shared/peer-plugin.js, D32).
+  'peer-chat-ux'(r) {
+    check('apply() completes', r.applyError === null, r.applyError)
+    check('no feature reported a failure', r.errors.length === 0, r.errors.join(' | '))
+    const peer = r.peer || {}
+    const marks = peer.marks || {}
+    check('a streaming chat area and a focused composer get none of the ported effects',
+      marks.follow === false && marks.fold === false && marks.reveal === false &&
+        marks.caretLayer === false && marks.caretMark === false && peer.highlights === 0,
+      JSON.stringify(peer))
+    check('the file change rows leave the host its two seat keys',
+      peer.seats === 0, JSON.stringify(peer.seats))
+    check('a running thinking row and process group are left exactly as the host rendered them',
+      peer.thinkExpanded === false && peer.groupOpen === false,
+      JSON.stringify({ think: peer.thinkExpanded, group: peer.groupOpen }))
+    const settings = peer.settings || {}
+    const taken = ['chatAnimations', 'caretMotion']
+    const answers = settings.answers || {}
+    // The reader's own answer stays on show (these defaults are on, the caret
+    // sits on Every move) while the control refuses input and the accent line
+    // names the plugin that owns the behaviour.
+    const showsOwnAnswer = (key) => {
+      const answer = answers[key]
+      return !!answer && (answer.on === true || answer.option === 'typing')
+    }
+    check('the Conversation tab greys those two controls out, keeps each one showing the reader\'s own answer, and names dsh-chat-ux in the accent line',
+      settings.registered === true && taken.every(key => (settings.rows || []).includes(key)) &&
+        taken.every(key => (settings.refusing || []).includes(key)) &&
+        taken.every(key => (settings.managed || []).includes(key)) &&
+        taken.every(showsOwnAnswer) &&
+        (settings.texts || []).some(text => text.includes('dsh-chat-ux')),
+      JSON.stringify({ rows: settings.rows, refusing: settings.refusing, managed: settings.managed, answers }))
+    check('the rows the other plugin does not own keep answering',
+      (settings.refusing || []).includes('turnStatus') === false && (settings.refusing || []).includes('viewTabs') === false,
+      JSON.stringify(settings.refusing))
+    commonChecks(r)
+  },
+  'chat-send'(r) {
+    check('apply() completes', r.applyError === null, r.applyError)
+    check('no feature reported a failure', r.errors.length === 0, r.errors.join(' | '))
+    const send = r.send || {}
+    const flying = send.flying || {}
+    const landed = send.landed || {}
+    check('a submission lifts a stand-in off the composer card and hides the real row while it flies',
+      send.inputFound === true && flying.ghost === true && flying.clone === true && flying.hidden === true &&
+        flying.visibility === 'hidden' && flying.animations > 0,
+      JSON.stringify(send))
+    check('when the flight lands the stand-in is gone and the row is visible again',
+      landed.ghost === false && landed.hidden === false && landed.visibility === 'visible',
+      JSON.stringify(landed))
+    const sendReduced = send.reduced || {}
+    check('the animation choice reaches it too: Reduced measures no origin and flies nothing (D26)',
+      sendReduced.ghost === false && sendReduced.hidden === false && sendReduced.visibility === 'visible',
+      JSON.stringify(sendReduced))
+  },
   deepy(r) {
     check('apply() completes', r.applyError === null, r.applyError)
     check('no feature reported a failure', r.errors.length === 0, r.errors.join(' | '))
-    const deepy = r.deepy || {}
+    const deepy = r.states || {}
     const is = (state, animation, place) => !!state && state.animation === animation && state.place === place && state.ready === true
     check('the brand stored as "off" reads as DeepSeek, and the light canvas turns sky white',
       deepy.brand === 'deepseek' && deepy.canvas === 'rgb(250, 251, 255)', JSON.stringify({ brand: deepy.brand, canvas: deepy.canvas }))

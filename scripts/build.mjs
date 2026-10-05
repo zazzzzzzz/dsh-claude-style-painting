@@ -12,7 +12,9 @@
  *                                inlined as JS markup tables
  *   src/assets/mascot/deepy/*.png      Deepy's animation sheets, copied to
  *                                lib/deepy/ for the host half to serve
- *   src/core/                    host accessors, prefs, model copy, i18n, scheduler
+ *   src/assets/mascot/crab/*.png       the composer crab's animation sheets
+ *                                (scripts/draw-crab.py), inlined as data URIs
+ *   src/core/                   host accessors, prefs, model copy, i18n, scheduler
  *   src/shared/                  parts more than one feature uses (JS + CSS)
  *   src/theme/*.css              the global look no single feature owns
  *   src/features/<name>/         one feature: its installer, its split
@@ -33,15 +35,23 @@
 import { createHash } from 'node:crypto'
 import fs from 'node:fs'
 import path from 'node:path'
+import { pathToFileURL } from 'node:url'
 import vm from 'node:vm'
 
 const ROOT = path.resolve(import.meta.dirname, '..')
+/**
+ * The host half's preference table (host/settings.js): the browser half's
+ * PREF_DEFAULTS and src/entry.js's feature switches are both held to it.
+ */
+const { PREFS_DEFAULT } = await import(pathToFileURL(path.join(ROOT, 'host', 'settings.js')).href)
 const SRC = path.join(ROOT, 'src')
 const ASSETS = path.join(SRC, 'assets')
 /** Brand marks inlined as CSS data URIs. */
 const BRAND_ASSETS = path.join(ASSETS, 'brand')
-/** The composer crab's sprite strips, inlined as CSS data URIs. */
+/** The mascots' art. */
 const MASCOT_ASSETS = path.join(ASSETS, 'mascot')
+/** The composer crab's animation sheets (scripts/draw-crab.py), inlined as data URIs. */
+const CRAB_ASSETS = path.join(MASCOT_ASSETS, 'crab')
 /** Deepy's animation sheets, copied to lib/deepy/ for the host half to serve. */
 const DEEPY_ASSETS = path.join(MASCOT_ASSETS, 'deepy')
 /** Vendored vendor lockups (src/assets/icons/combine); mark + wordmark per brand id. */
@@ -83,15 +93,19 @@ const FRAGMENTS = [
   'core/i18n.js',
   'shared/dom.js',
   'shared/notify.js',
+  'shared/resource.js',
   'shared/format.js',
   'shared/popover.js',
   'shared/sliding-pill.js',
+  'shared/chat-dom.js',
+  'shared/peer-plugin.js',
   'features/artwork/artwork.js',
   'features/selection/selection.js',
   'features/composer/composer.js',
   'features/copy/copy.js',
-  'features/permissions/session-stats.js',
   'features/permissions/permissions.js',
+  'features/context-stats/session-stats.js',
+  'features/context-stats/context-stats.js',
   'features/model/brand.js',
   'features/model/copy-lookup.js',
   'features/model/catalog.js',
@@ -114,16 +128,45 @@ const FRAGMENTS = [
   'features/search/sources.js',
   'features/search/search.js',
   'features/turn-status/turn-status.js',
+  'features/chat-follow/reader-intent.js',
+  'features/chat-follow/scroll-ease.js',
+  'features/chat-follow/chat-tail.js',
+  'features/chat-follow/process-follow.js',
+  'features/chat-follow/chat-follow.js',
+  'features/chat-fold/fold-toggle.js',
+  'features/chat-fold/reasoning-fold.js',
+  'features/chat-fold/process-fold.js',
+  'features/chat-fold/chat-fold.js',
+  'features/chat-fold/fold-glide-parts.js',
+  'features/chat-fold/fold-glide.js',
+  'features/chat-reveal/reveal-engine.js',
+  'features/chat-reveal/chat-reveal.js',
+  'features/chat-files/file-row-model.js',
+  'features/chat-files/chat-files.js',
+  'features/chat-send/send-snapshot.js',
+  'features/chat-send/send-shape.js',
+  'features/chat-send/send-morph.js',
+  'features/chat-send/send-flight.js',
+  'features/caret/caret-measure.js',
+  'features/caret/caret.js',
   'features/view-tabs/view-tabs.js',
   'features/home/data.js',
   'features/home/overview.js',
   'features/home/models.js',
   'features/home/home-layout.js',
-  'features/mascot/whale-signals.js',
+  'features/mascot/mascot-signals.js',
+  'features/mascot/mascot-player.js',
   'features/mascot/whale-sheets.js',
   'features/mascot/whale.js',
+  'features/mascot/crab.js',
   'features/mascot/mascot.js',
   'core/scheduler.js',
+  'features/settings/settings-controls.js',
+  'features/settings/settings-tab-general.js',
+  'features/settings/settings-tab-appearance.js',
+  'features/settings/settings-tab-composer.js',
+  'features/settings/settings-tab-sidebar.js',
+  'features/settings/settings-tab-conversation.js',
   'features/settings/settings.js',
   'entry.js',
 ]
@@ -145,6 +188,13 @@ const STYLE_FILES = [
   { file: 'features/workspace/workspace.css' },
   { file: 'features/search/search.css' },
   { file: 'features/turn-status/turn-status.css' },
+  { file: 'features/chat-follow/chat-follow.css' },
+  { file: 'features/chat-fold/fold.css' },
+  { file: 'features/chat-reveal/reveal-rules.css' },
+  { file: 'features/chat-files/chat-files.css' },
+  { file: 'features/chat-send/send-flight.css' },
+  { file: 'features/chat-fold/fold-motion.css' },
+  { file: 'features/caret/caret.css' },
   { file: 'features/permissions/permissions.css' },
   { file: 'features/account/account-footer.css' },
   { file: 'features/ban-screen/ban-screen.css' },
@@ -157,7 +207,7 @@ const STYLE_FILES = [
   { file: 'features/home/home-panel.css' },
   { file: 'features/home/home-overview.css' },
   { file: 'features/home/home-models.css' },
-  { file: 'features/mascot/mascot.css' },
+  { file: 'features/mascot/crab.css' },
   { file: 'features/mascot/whale.css' },
   { file: 'features/theme-flip/theme-flip.css' },
   // Last: its rules hand the canvas to the artwork layer, and several of them
@@ -198,23 +248,36 @@ const FOOTER = `  },
 })
 `
 
-/** Evaluate src/constants.js (pure, DOM-free) to obtain the %%TOKEN%% values. */
-function loadTokens() {
-  const constants = fs.readFileSync(path.join(SRC, 'constants.js'), 'utf8')
-  const factory = new Function(`
-    ${constants}
-    return {
-      SANS, SERIF, PROSE, MONO, BRAND_ATTR, BRAND_CLAUDE, BRAND_DEEPSEEK, MOTION_ATTR, MOTION_REDUCED, FOOTER_ATTR, COMPOSER_ATTR, PERMISSIONS_ATTR, ACCOUNT_MENU_ATTR, ACCOUNT_ARMED_ATTR, ACCOUNT_READY_ATTR, HERO_MENU_ATTR, ARTWORK_ATTR, ARTWORK_NARROW_ATTR, ARTWORK_PALETTE_ATTR,
+/**
+ * Evaluate src/constants.js once (pure, DOM-free): `tokens` are the %%TOKEN%%
+ * values, beside them the two sheet tables and the preference defaults the
+ * build checks. The file is written for both halves — the bundle inlines it
+ * and host/routes.js reads it as text — so nothing imports it directly.
+ */
+const CONSTANTS = new Function(`
+  ${fs.readFileSync(path.join(SRC, 'constants.js'), 'utf8')}
+  return {
+    tokens: {
+      SANS, SERIF, PROSE, MONO, BRAND_ATTR, BRAND_CLAUDE, BRAND_DEEPSEEK, MOTION_ATTR, MOTION_REDUCED, FOOTER_ATTR, COMPOSER_ATTR, PERMISSIONS_ATTR, SESSION_STATS_ATTR, CHAT_FOLLOW_ATTR, STREAM_GLIDE_ATTR, CHAT_FOLD_ATTR, CHAT_ROLLING_ATTR, CHAT_REVEAL_ATTR, CHAT_FLYING_ATTR, CARET_ATTR, CARET_LAYER_ATTR, CARET_VISIBLE_ATTR, CARET_HOST_ATTR, ACCOUNT_MENU_ATTR, ACCOUNT_ARMED_ATTR, ACCOUNT_READY_ATTR, HERO_MENU_ATTR, SETTINGS_SCROLLER_ATTR, ARTWORK_ATTR, ARTWORK_NARROW_ATTR, ARTWORK_PALETTE_ATTR,
       // "this brand is drawn by the skin": of the two brands, DeepSeek keeps the
       // host's own brand area, so the shared rules that hide the host's mark and
       // paint the ::before are gated on the Claude brand rather than on
       // :not(deepseek), which would have them paint over the host's whale.
       BRAND_ACTIVE: '[' + BRAND_ATTR + '="' + BRAND_CLAUDE + '"]',
+      // Who paints the colours and who sets the type: a rule that writes a
+      // host token carries the Claude gate (checkTokenGates), and the host
+      // blocks alias the skin's private tokens to the host's.
+      PALETTE_CLAUDE: '[' + PALETTE_ATTR + '="' + PALETTE_CLAUDE + '"]',
+      PALETTE_HOST: '[' + PALETTE_ATTR + '="' + PALETTE_HOST + '"]',
+      TYPEFACE_CLAUDE: '[' + TYPEFACE_ATTR + '="' + TYPEFACE_CLAUDE + '"]',
+      TYPEFACE_HOST: '[' + TYPEFACE_ATTR + '="' + TYPEFACE_HOST + '"]',
       CLAUDE_WORD_WIDTH: (18 * CLAUDE_WORD_ASPECT).toFixed(1),
-    }
-  `)
-  return factory()
-}
+    },
+    CRAB_SHEETS,
+    DEEPY_SHEETS,
+    PREF_DEFAULTS,
+  }
+`)()
 
 /** Marker delimiting the region of a stylesheet the composer preference gates. */
 const COMPOSER_GATE_MARKER = '/* @composer-gate */'
@@ -276,6 +339,70 @@ function gateComposerScope(file, text) {
   return head + gated
 }
 
+/** A stylesheet with its comments blanked in place, so offsets still give the right line. */
+function blankComments(text) {
+  return text.replace(/\/\*[\s\S]*?\*\//g, (comment) => comment.replace(/[^\n]/g, ' '))
+}
+
+/** A selector list's members: split at the commas outside any `(` / `[`. */
+function splitSelectorList(list) {
+  const parts = []
+  let depth = 0
+  let from = 0
+  for (let i = 0; i < list.length; i++) {
+    const ch = list[i]
+    if (ch === '(' || ch === '[') depth++
+    else if (ch === ')' || ch === ']') depth--
+    else if (ch === ',' && depth === 0) {
+      parts.push(list.slice(from, i).trim())
+      from = i + 1
+    }
+  }
+  parts.push(list.slice(from).trim())
+  return parts
+}
+
+/**
+ * Hold every write of a host token to its gate, and every private token the
+ * Claude choice defines to an alias under the host choice.
+ *
+ * A `--dsw-font-*` declaration must sit in a rule whose every selector carries
+ * %%TYPEFACE_CLAUDE%%; any other `--dsw-*` declaration in one that carries
+ * %%PALETTE_CLAUDE%%. Under "follow the host" those rules drop out and the
+ * host's tokens (or another theme plugin's) stand. The private tokens those
+ * rules define are recorded in `names`, together with the ones the
+ * %%PALETTE_HOST%% / %%TYPEFACE_HOST%% rules alias, for checkTokenAliases.
+ */
+function checkTokenGates(file, text, names) {
+  const source = blankComments(text)
+  const declaration = /(?<![\w(-])(--[A-Za-z0-9-]+)\s*:/g
+  for (const match of source.matchAll(declaration)) {
+    const name = match[1]
+    const open = source.lastIndexOf('{', match.index)
+    if (open === -1) continue
+    const start = Math.max(source.lastIndexOf('}', open), source.lastIndexOf('{', open - 1)) + 1
+    const selectors = splitSelectorList(source.slice(start, open))
+    const every = (token) => selectors.every((selector) => selector.includes(token))
+    const line = source.slice(0, match.index).split('\n').length
+    if (name.startsWith('--dsw-font-')) {
+      if (!every('%%TYPEFACE_CLAUDE%%')) throw new Error(`build: src/${file}:${line} writes ${name} outside the %%TYPEFACE_CLAUDE%% gate`)
+    } else if (name.startsWith('--dsw-')) {
+      if (!every('%%PALETTE_CLAUDE%%')) throw new Error(`build: src/${file}:${line} writes ${name} outside the %%PALETTE_CLAUDE%% gate`)
+    }
+    if (!name.startsWith('--dsh-claude-')) continue
+    const typeface = name.startsWith('--dsh-claude-font-')
+    if (every(typeface ? '%%TYPEFACE_CLAUDE%%' : '%%PALETTE_CLAUDE%%')) names.claude.add(name)
+    if (every(typeface ? '%%TYPEFACE_HOST%%' : '%%PALETTE_HOST%%')) names.host.add(name)
+  }
+}
+
+/** Every private token the Claude choice defines needs its alias under the host choice. */
+function checkTokenAliases(names) {
+  for (const name of names.claude) {
+    if (!names.host.has(name)) throw new Error(`build: ${name} is defined under the Claude palette or typeface but has no alias under the host's`)
+  }
+}
+
 /**
  * Refuse a `:has()` that is not in its selector's last compound.
  *
@@ -291,8 +418,7 @@ function gateComposerScope(file, text) {
  * @param text - stylesheet source (LF-normalised).
  */
 function checkHasPlacement(file, text) {
-  // Comments blanked in place, so offsets still give the right line.
-  const source = text.replace(/\/\*[\s\S]*?\*\//g, (comment) => comment.replace(/[^\n]/g, ' '))
+  const source = blankComments(text)
   let from = 0
   for (;;) {
     const at = source.indexOf(':has(', from)
@@ -349,88 +475,97 @@ function loadSvgAssets() {
 }
 
 /**
- * The composer crab's frames: one strip of the crab in its colours and one of
- * the fishing rod as a mask, a frame per 34×23 cells side by side, one pixel
- * per cell (src/features/mascot). Encoded into CSS url() %%TOKEN%% values the
- * same way as the brand marks.
+ * The file name a mascot sheet may have. The host half serves Deepy's sheets
+ * under exactly the names this shape allows (host/routes.js, DEEPY_FILE), so a
+ * name outside it would be copied and never served.
  */
-const PNG_TOKENS = {
-  MASCOT_BODY: 'crab-body.png',
-  MASCOT_ROD: 'crab-rod.png',
+const SHEET_FILE = /^[a-z]+(?:-[a-z]+)*\.png$/
+
+/**
+ * Hold one mascot's sheet directory to its animation table in src/constants.js.
+ *
+ * Each entry needs its files and a well-formed row — a frame count, a crop box
+ * inside the character's grid, a still frame the sheet holds — and a file no
+ * entry names is refused, so the package never ships a sheet the mascot cannot
+ * play or an entry that would draw nothing.
+ *
+ * @param table - the table's name, for diagnostics.
+ * @param sheets - animation → `{ frames, box, still }`.
+ * @param grid - `[width, height]` of the character's grid.
+ * @param dir - the sheet directory.
+ * @param filesOf - animation → the file names its entry needs.
+ */
+function checkSheets(table, sheets, grid, dir, filesOf) {
+  const where = path.relative(ROOT, dir).replace(/\\/g, '/')
+  const wanted = new Set(Object.keys(sheets).flatMap(filesOf))
+  const files = fs.readdirSync(dir)
+  for (const file of files) {
+    if (!SHEET_FILE.test(file) || !wanted.has(file)) throw new Error(`build: ${where}/${file} has no entry in ${table}`)
+  }
+  for (const [name, sheet] of Object.entries(sheets)) {
+    const [x, y, w, h] = Array.isArray(sheet.box) ? sheet.box : []
+    const whole = [sheet.frames, sheet.still, x, y, w, h].every(Number.isInteger)
+    if (!whole || sheet.frames < 1 || sheet.still < 0 || sheet.still >= sheet.frames || x < 0 || y < 0 || w < 1 || h < 1 || x + w > grid[0] || y + h > grid[1]) {
+      throw new Error(`build: ${table}["${name}"] needs whole frames, still < frames and a box inside the ${grid[0]}×${grid[1]} grid`)
+    }
+    for (const file of filesOf(name)) {
+      if (!files.includes(file)) throw new Error(`build: ${table}["${name}"] has no ${file} in ${where}/`)
+    }
+  }
 }
 
-function loadPngAssets() {
+/**
+ * The composer crab's sheets, inlined into the bundle as CRAB_SHEET_URLS.
+ *
+ * Drawn by scripts/draw-crab.py into src/assets/mascot/crab/: per animation a
+ * sheet in the crab's colours and an ink mask, eight frames to a row, one
+ * pixel a cell, on a 52×36 grid. Together they are a few dozen kilobytes, so
+ * they ride the bundle as data URIs and every animation is ready the moment
+ * it is wanted.
+ *
+ * @returns animation → { body, ink } data URIs.
+ */
+function loadCrabSheets() {
+  const sheets = CONSTANTS.CRAB_SHEETS
+  checkSheets('CRAB_SHEETS', sheets, [52, 36], CRAB_ASSETS, (name) => [`${name}.png`, `${name}-ink.png`])
+  const read = (file) => 'data:image/png;base64,' + fs.readFileSync(path.join(CRAB_ASSETS, file)).toString('base64')
   const out = {}
-  for (const [token, file] of Object.entries(PNG_TOKENS)) {
-    out[token] = 'url("data:image/png;base64,' + fs.readFileSync(path.join(MASCOT_ASSETS, file)).toString('base64') + '")'
-  }
+  for (const name of Object.keys(sheets)) out[name] = { body: read(`${name}.png`), ink: read(`${name}-ink.png`) }
   return out
 }
 
 /**
- * The file name a Deepy sheet may have: the host half serves exactly the names
- * this shape allows (host/routes.js, DEEPY_FILE), so a name outside it would be
- * copied and never served.
- */
-const DEEPY_FILE = /^[a-z]+(?:-[a-z]+)*\.png$/
-
-/**
- * Copy Deepy's sheets to lib/deepy/.
+ * Check Deepy's sheets before lib/ is touched, and stamp each one.
  *
- * The animation table in src/constants.js (DEEPY_SHEETS) is the list. Each
- * entry needs its sheet and a well-formed row — a frame count, a crop box
- * inside the 52×52 grid, a still frame the sheet holds — and a sheet no entry
- * names is refused, so the package never ships a sheet the whale cannot play
- * or an entry that would draw nothing. The sheets are too large to inline
- * (about 0.4 MB together), and the browser only fetches the ones it plays.
+ * Deepy is drawn on a 52×52 grid. The sheets are too large to inline (about
+ * 0.4 MB together) and the browser only fetches the ones it plays, so they are
+ * copied; every check that can fail runs here, while nothing has been written
+ * yet. The stamps are emitted into the bundle as DEEPY_STAMPS: the browser
+ * half keys its generated vector cache on the sheet's own stamp, so a sheet is
+ * re-converted only when its own pixels change.
  *
- * @returns the number of sheets and their total size, for the build log.
+ * @returns the sheet names in table order, their total size and their content stamps.
  */
-function copyDeepySheets() {
-  const constants = fs.readFileSync(path.join(SRC, 'constants.js'), 'utf8')
-  const sheets = new Function(`${constants}\n    return DEEPY_SHEETS`)()
-  const names = Object.keys(sheets)
-  const files = fs.readdirSync(DEEPY_ASSETS)
-  for (const file of files) {
-    if (!DEEPY_FILE.test(file)) throw new Error(`build: src/assets/mascot/deepy/${file} is not a sheet name the host half serves`)
-    if (!names.includes(file.slice(0, -4))) throw new Error(`build: src/assets/mascot/deepy/${file} has no entry in DEEPY_SHEETS`)
-  }
-  for (const name of names) {
-    const sheet = sheets[name]
-    const [x, y, w, h] = Array.isArray(sheet.box) ? sheet.box : []
-    const whole = [sheet.frames, sheet.still, x, y, w, h].every(Number.isInteger)
-    if (!whole || sheet.frames < 1 || sheet.still < 0 || sheet.still >= sheet.frames || x < 0 || y < 0 || w < 1 || h < 1 || x + w > 52 || y + h > 52) {
-      throw new Error(`build: DEEPY_SHEETS["${name}"] needs whole frames, still < frames and a box inside the 52×52 grid`)
-    }
-    if (!files.includes(`${name}.png`)) throw new Error(`build: DEEPY_SHEETS["${name}"] has no sheet in src/assets/mascot/deepy/`)
-  }
-  fs.rmSync(DEEPY_OUT, { recursive: true, force: true })
-  fs.mkdirSync(DEEPY_OUT)
+function planDeepySheets() {
+  const names = Object.keys(CONSTANTS.DEEPY_SHEETS)
+  checkSheets('DEEPY_SHEETS', CONSTANTS.DEEPY_SHEETS, [52, 52], DEEPY_ASSETS, (name) => [`${name}.png`])
   let bytes = 0
+  const stamps = {}
   for (const name of names) {
-    const target = path.join(DEEPY_OUT, `${name}.png`)
-    fs.copyFileSync(path.join(DEEPY_ASSETS, `${name}.png`), target)
-    bytes += fs.statSync(target).size
+    const sheet = fs.readFileSync(path.join(DEEPY_ASSETS, `${name}.png`))
+    bytes += sheet.byteLength
+    stamps[name] = createHash('sha256').update(sheet).digest('hex').slice(0, 12)
   }
-  return { count: names.length, bytes }
+  return { names, bytes, stamps }
 }
 
-/**
- * A content stamp per Deepy sheet, emitted into the bundle as DEEPY_STAMPS.
- * The browser half keys its generated vector cache on the sheet's own stamp,
- * so a sheet is re-converted only when its own pixels change — a build that
- * touches no sheet leaves every cached vector valid.
- */
-function stampDeepySheets() {
-  const constants = fs.readFileSync(path.join(SRC, 'constants.js'), 'utf8')
-  const sheets = new Function(`${constants}\n    return DEEPY_SHEETS`)()
-  const stamps = {}
-  for (const name of Object.keys(sheets)) {
-    const file = path.join(DEEPY_ASSETS, `${name}.png`)
-    if (!fs.existsSync(file)) throw new Error(`build: DEEPY_SHEETS["${name}"] has no sheet in src/assets/mascot/deepy/`)
-    stamps[name] = createHash('sha256').update(fs.readFileSync(file)).digest('hex').slice(0, 12)
+/** Copy the planned sheets into lib/deepy/, replacing whatever was there. */
+function writeDeepySheets(names) {
+  fs.rmSync(DEEPY_OUT, { recursive: true, force: true })
+  fs.mkdirSync(DEEPY_OUT)
+  for (const name of names) {
+    fs.copyFileSync(path.join(DEEPY_ASSETS, `${name}.png`), path.join(DEEPY_OUT, `${name}.png`))
   }
-  return stamps
 }
 
 /**
@@ -589,6 +724,7 @@ const FEATURE_MAINS = {
   mascot: 'features/mascot/mascot.js',
   copy: 'features/copy/copy.js',
   permissions: 'features/permissions/permissions.js',
+  contextStats: 'features/context-stats/context-stats.js',
   model: 'features/model/model-picker.js',
   effort: 'features/effort/effort-picker.js',
   heroMenu: 'features/hero-menu/hero-menu.js',
@@ -599,12 +735,38 @@ const FEATURE_MAINS = {
   workspace: 'features/workspace/workspace-view.js',
   search: 'features/search/search.js',
   turnStatus: 'features/turn-status/turn-status.js',
+  chatFollow: 'features/chat-follow/chat-follow.js',
+  chatFold: 'features/chat-fold/chat-fold.js',
+  chatReveal: 'features/chat-reveal/chat-reveal.js',
+  chatFiles: 'features/chat-files/chat-files.js',
+  chatSend: 'features/chat-send/send-flight.js',
+  caret: 'features/caret/caret.js',
   viewTabs: 'features/view-tabs/view-tabs.js',
   settings: 'features/settings/settings.js',
 }
 
 /** Installs in entry.js's table that are not features with a source directory. */
 const NON_FEATURE_INSTALLS = ['scheduler']
+
+/**
+ * Every FEATURES entry answers whether the reader can switch it off: exactly
+ * one of `pref: '<preference key>'` or `ungated: '<reason>'`. The preference
+ * keys are host/settings.js's PREFS_DEFAULT. An entry with neither, with both,
+ * or naming a key the table lacks fails the build, so a new feature cannot
+ * ship without deciding.
+ */
+function checkFeatureSwitches(entry) {
+  const block = entry.match(/const FEATURES = \[([\s\S]*?)\n\s*\]\n/)
+  if (block === null) throw new Error('build: src/entry.js has no FEATURES table')
+  for (const line of block[1].split('\n')) {
+    const name = line.match(/\bname: '([A-Za-z][A-Za-z0-9]*)'/)
+    if (name === null) continue
+    const pref = line.match(/\bpref: '([A-Za-z][A-Za-z0-9]*)'/)
+    const ungated = /\bungated: '[^']+'/.test(line)
+    if ((pref === null) === !ungated) throw new Error(`build: FEATURES entry "${name[1]}" must declare exactly one of pref or ungated`)
+    if (pref !== null && !(pref[1] in PREFS_DEFAULT)) throw new Error(`build: FEATURES entry "${name[1]}" names pref "${pref[1]}", which host/settings.js PREFS_DEFAULT does not carry`)
+  }
+}
 
 /**
  * Hold src/entry.js's FEATURES table and the src/features/ directories to the
@@ -625,6 +787,7 @@ function checkFeatureRegistry() {
   for (const id of Object.keys(FEATURE_MAINS)) {
     if (!declared.has(id)) throw new Error(`build: FEATURE_MAINS names "${id}", which src/entry.js does not install`)
   }
+  checkFeatureSwitches(entry)
   const covered = new Set(Object.values(FEATURE_MAINS).map((file) => file.split('/')[1]))
   const dirs = fs.readdirSync(path.join(SRC, 'features'), { withFileTypes: true })
     .filter((item) => item.isDirectory())
@@ -634,22 +797,42 @@ function checkFeatureRegistry() {
   }
 }
 
+/**
+ * Hold the browser half's preference defaults (src/constants.js PREF_DEFAULTS)
+ * to the host half's PREFS_DEFAULT: the same keys with the same values, so the
+ * frames before the settings form answers show what the form will hold.
+ */
+function checkPrefDefaults() {
+  const browser = CONSTANTS.PREF_DEFAULTS
+  for (const key of new Set([...Object.keys(browser), ...Object.keys(PREFS_DEFAULT)])) {
+    if (!(key in browser)) throw new Error(`build: src/constants.js PREF_DEFAULTS lacks "${key}", which host/settings.js PREFS_DEFAULT carries`)
+    if (!(key in PREFS_DEFAULT)) throw new Error(`build: host/settings.js PREFS_DEFAULT lacks "${key}", which src/constants.js PREF_DEFAULTS carries`)
+    if (JSON.stringify(browser[key]) !== JSON.stringify(PREFS_DEFAULT[key])) {
+      throw new Error(`build: preference "${key}" defaults to ${JSON.stringify(browser[key])} in src/constants.js but ${JSON.stringify(PREFS_DEFAULT[key])} in host/settings.js`)
+    }
+  }
+}
+
 function main() {
   checkListed()
   checkFeatureRegistry()
-  const tokens = { ...loadTokens(), ...loadSvgAssets(), ...loadPngAssets() }
+  checkPrefDefaults()
+  const tokens = { ...CONSTANTS.tokens, ...loadSvgAssets() }
   const combines = loadCombines()
 
+  const tokenNames = { claude: new Set(), host: new Set() }
   const cssText = STYLE_FILES
     .map((fileDef) => {
       const file = fileDef.file
       const gated = fileDef.gate === true
       let text = fs.readFileSync(path.join(SRC, file), 'utf8').replace(/\r\n/g, '\n')
       checkHasPlacement(file, text)
+      checkTokenGates(file, text, tokenNames)
       if (gated) text = gateComposerScope(file, text)
       return substitute(file, text, tokens).replace(/\n+$/, '')
     })
     .join('\n\n')
+  checkTokenAliases(tokenNames)
 
   const cssDecl = [
     '    // ============================================================================',
@@ -701,12 +884,21 @@ function main() {
   ].join('\n')
 
   // Deepy sheet stamps: content hashes of the sheets, for the browser half's
-  // vector cache keys (stampDeepySheets).
+  // vector cache keys (planDeepySheets).
+  const deepy = planDeepySheets()
   const deepyStampDecl = [
     '    // ============================================================================',
     '    // Deepy 帧图内容戳（由 scripts/build.mjs 按帧图字节生成） (Deepy sheet stamps)',
     '    // ============================================================================',
-    `    var DEEPY_STAMPS = ${JSON.stringify(stampDeepySheets())}`,
+    `    var DEEPY_STAMPS = ${JSON.stringify(deepy.stamps)}`,
+  ].join('\n')
+
+  // The crab's sheets, inlined (loadCrabSheets).
+  const crabSheetDecl = [
+    '    // ============================================================================',
+    '    // 螃蟹帧图（由 src/assets/mascot/crab/*.png 内联生成，勿手改） (Crab sheets)',
+    '    // ============================================================================',
+    `    var CRAB_SHEET_URLS = ${JSON.stringify(loadCrabSheets())}`,
   ].join('\n')
 
   const draft = [
@@ -716,40 +908,45 @@ function main() {
     combineDecl,
     buildDecl,
     deepyStampDecl,
+    crabSheetDecl,
     ...FRAGMENTS.slice(1).map(fragment),
     FOOTER,
   ].join('\n\n')
   const buildId = createHash('sha256').update(draft).digest('hex').slice(0, 12)
   const bundle = draft.replace(BUILD_ID_SLOT, buildId)
 
-  // Syntax gate: the bundle must parse before it is written.
+  // Syntax gate: the bundle must parse before it is written. The failing
+  // bundle is kept in .debug/ so the line the parser names can be read.
   try {
     new vm.Script(bundle, { filename: 'lib/client.js' })
   } catch (error) {
     fs.mkdirSync(path.join(ROOT, '.debug'), { recursive: true })
     fs.writeFileSync(path.join(ROOT, '.debug', 'failed-bundle.js'), bundle)
-    console.error('build: generated bundle failed to parse:', error.message)
-    console.error('build: failing bundle written to .debug/failed-bundle.js')
-    process.exit(1)
+    throw new Error(`build: generated bundle failed to parse (written to .debug/failed-bundle.js): ${error.message}`)
   }
 
-  fs.writeFileSync(OUT, bundle)
+  // Everything is validated before anything is written: a refusal anywhere in
+  // this build must not leave lib/ holding one half of a new build beside the
+  // other half of the previous one.
+  const copy = JSON.parse(fs.readFileSync(path.join(SRC, MODEL_COPY), 'utf8'))
+  const exact = validateModelCopy(copy, combines)
+  const copyText = JSON.stringify(copy, null, 2) + '\n'
+  const iconSource = path.join(BRAND_ASSETS, ICON_SOURCE)
+  const iconTarget = path.join(LIB, ICON_FILE)
+  if (!fs.existsSync(iconSource)) throw new Error(`build: src/assets/brand/${ICON_SOURCE} is missing`)
 
+  fs.writeFileSync(OUT, bundle)
   const lines = bundle.split('\n').length
   console.log(`built lib/client.js (${lines} lines, ${bundle.length} bytes, build ${buildId}) from src/ (${STYLE_FILES.length} stylesheets + ${FRAGMENTS.length} fragments + ${Object.keys(combines).length} lockups)`)
 
-  const copy = JSON.parse(fs.readFileSync(path.join(SRC, MODEL_COPY), 'utf8'))
-  const exact = validateModelCopy(copy, combines)
-  fs.writeFileSync(path.join(LIB, MODEL_COPY), JSON.stringify(copy, null, 2) + '\n')
+  fs.writeFileSync(path.join(LIB, MODEL_COPY), copyText)
   console.log(`built lib/${MODEL_COPY} (${exact} exact entries, ${copy.families.length} family rules, ${copy.tiers.length} tier rules)`)
 
-  const iconSource = path.join(BRAND_ASSETS, ICON_SOURCE)
-  const iconTarget = path.join(LIB, ICON_FILE)
   fs.copyFileSync(iconSource, iconTarget)
   console.log(`built lib/${ICON_FILE} (${fs.statSync(iconTarget).size} bytes) from src/assets/brand/${ICON_SOURCE}`)
 
-  const deepy = copyDeepySheets()
-  console.log(`built lib/deepy/ (${deepy.count} sheets, ${deepy.bytes} bytes) from src/assets/mascot/deepy/`)
+  writeDeepySheets(deepy.names)
+  console.log(`built lib/deepy/ (${deepy.names.length} sheets, ${deepy.bytes} bytes) from src/assets/mascot/deepy/`)
 }
 
 main()

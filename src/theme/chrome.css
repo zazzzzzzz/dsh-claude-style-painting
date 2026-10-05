@@ -1,13 +1,70 @@
 /* --- 2.3 Host Chrome Restyling (Sidebar, Composer, Buttons) --- */
 /* ---------- canvas + hairline structure ---------- */
-body[data-dsh-claude-style] :is([data-pane="sidebar"], [class*="sidebarCol"], .dshDesktopSidebarSurface) {
+/* The canvases are the Claude palette's; under "follow the host" the host
+   paints its own columns (or a theme plugin does), and only the hairline stays. */
+body[data-dsh-claude-style]%%PALETTE_CLAUDE%% :is([data-pane="sidebar"], [class*="sidebarCol"], .dshDesktopSidebarSurface) {
   --dsw-specific-sidebar-fill: var(--dsh-claude-sidebar-canvas) !important;
   background: var(--dsh-claude-sidebar-canvas) !important;
+}
+
+body[data-dsh-claude-style] :is([data-pane="sidebar"], [class*="sidebarCol"], .dshDesktopSidebarSurface) {
   border-right: 1px solid var(--dsw-alias-border-l1) !important;
 }
 
-body[data-dsh-claude-style] :is([data-pane="conversation"], [class*="centerCol"]) {
+body[data-dsh-claude-style]%%PALETTE_CLAUDE%% :is([data-pane="conversation"], [class*="centerCol"]) {
   background: var(--dsh-claude-canvas);
+}
+
+/* ---------- Windows titlebar: the columns run to the window's top ---------- */
+/* The Windows desktop shell keeps a caption row above every column — the
+   frame's padding-top, painted in the sidebar fill by the frame and by its
+   ::before drag band — and draws the three window buttons natively over it on
+   a block of that same fill: the desktop preload reads the fill off a hidden
+   probe <span> it appends to <body> and hands it to setTitleBarOverlay, again
+   whenever <head> changes. The skin clears the row. The band, the frame and
+   the probe go transparent, so the native buttons show the page under them
+   (and darken with a modal's mask like the rest of the page); each column
+   paints its own fill up through the row with an outer box-shadow, which
+   draws only outside the column's box and so leaves its content alone and
+   follows its track through drags and the collapse animation; the sidebar's
+   hairline continues up from its resize handle, which straddles the column
+   edge and moves on the same curve. The centre's rounded top-left corner
+   (the host's --dsh-windows-content-radius, which the fullscreen file panel
+   reads too) goes to zero, so the hairline meets the centre straight. The
+   fills read the private canvases, which under the host's colours are the
+   host's own column tokens. */
+html[data-windows-titlebar] body[data-dsh-claude-style] [class*="_frame"]:has(> [class*="_sidebarCol"]) {
+  --dsh-windows-content-radius: 0px;
+  background: var(--dsh-claude-canvas) !important;
+}
+
+html[data-windows-titlebar] body[data-dsh-claude-style] [class*="_frame"]:has(> [class*="_sidebarCol"])::before {
+  background: transparent !important;
+}
+
+html[data-windows-titlebar] body[data-dsh-claude-style] > span[style*="--dsw-specific-sidebar-fill"] {
+  background-color: transparent !important;
+}
+
+html[data-windows-titlebar] body[data-dsh-claude-style] [class*="_frame"] > [class*="_sidebarCol"] {
+  box-shadow: 0 calc(-1 * var(--dsh-windows-titlebar-height)) 0 0 var(--dsh-claude-sidebar-canvas);
+}
+
+html[data-windows-titlebar] body[data-dsh-claude-style] [class*="_frame"] > [class*="_centerCol"] {
+  box-shadow: 0 calc(-1 * var(--dsh-windows-titlebar-height)) 0 0 var(--dsh-claude-canvas);
+}
+
+/* The handle is 8px wide, centred on the column edge (margin-left: -4px), and
+   the sidebar's 1px hairline is the last pixel inside the column: 3px into the
+   handle. */
+html[data-windows-titlebar] body[data-dsh-claude-style] [class*="_frame"] > [data-side="sidebar"]::before {
+  content: "";
+  position: absolute;
+  left: 3px;
+  bottom: 100%;
+  height: var(--dsh-windows-titlebar-height);
+  border-left: 1px solid var(--dsw-alias-border-l1);
+  pointer-events: none;
 }
 
 /* ---------- clay accent: one emphasis color, disciplined ---------- */
@@ -23,15 +80,15 @@ body[data-dsh-claude-style] a:not([class*="_linkButton"]):hover {
   color: var(--dsh-claude-link-hover);
 }
 
-body[data-dsh-claude-style] button[class*="brand"] {
+body[data-dsh-claude-style] button[class*="brand"]:not([class*="dsh-claude"]) {
   color: var(--dsw-alias-brand-primary);
 }
 
 /* The baked-in wordmark "HARNESS" badge (a pill rect + its letter paths)
    looks crowded next to the whale + wordmark. Hide the badge entirely so
    the brand reads as a clean whale + wordmark on the clay pill. */
-body[data-dsh-claude-style] button[class*="brand"] rect[fill="currentColor"],
-body[data-dsh-claude-style] button[class*="brand"] path[fill*="label-primary-inverted"] {
+body[data-dsh-claude-style] button[class*="brand"]:not([class*="dsh-claude"]) rect[fill="currentColor"],
+body[data-dsh-claude-style] button[class*="brand"]:not([class*="dsh-claude"]) path[fill*="label-primary-inverted"] {
   display: none;
 }
 
@@ -55,25 +112,48 @@ body[data-dsh-claude-style] [data-slot="sidebar.settings"] > :is(button, [role="
    the canvas. That pill also carried a 9999px radius, and together with the
    button overflow:hidden its arc clipped the leading edge of the mark — so
    the radius goes as well. Adaptive logo color: espresso on light, ivory
-   on dark (--dsh-claude-logo-ink; the DeepSeek brand's own blue under it). */
-body[data-dsh-claude-style]:not([data-ds-dark-theme]) button[class*="brand"],
-body[data-dsh-claude-style][data-ds-dark-theme] button[class*="brand"] {
+   on dark (--dsh-claude-logo-ink; the DeepSeek brand's own blue under it).
+   Every "brand" rule in this file excludes the skin's own controls
+   (:not([class*="dsh-claude"])): the settings page's brand cards carry the
+   same substring and draw their own border and background. */
+body[data-dsh-claude-style]:not([data-ds-dark-theme]) button[class*="brand"]:not([class*="dsh-claude"]),
+body[data-dsh-claude-style][data-ds-dark-theme] button[class*="brand"]:not([class*="dsh-claude"]) {
   background: transparent !important;
   border: none;
   border-radius: 0;
 }
 
-body[data-dsh-claude-style]:not([data-ds-dark-theme]) button[class*="brand"] {
+body[data-dsh-claude-style]:not([data-ds-dark-theme]) button[class*="brand"]:not([class*="dsh-claude"]) {
   color: var(--dsh-claude-logo-ink) !important;
 }
 
-body[data-dsh-claude-style][data-ds-dark-theme] button[class*="brand"] {
+body[data-dsh-claude-style][data-ds-dark-theme] button[class*="brand"]:not([class*="dsh-claude"]) {
   color: var(--dsh-claude-logo-ink) !important;
 }
 
-/* badges: full pill */
-body[data-dsh-claude-style] :is([class*="badge"], [class*="Badge"], [class*="_tag"], [class*="Tag"]) {
+/* Host badges and tags: full pill. Each is named by its own CSS-module class
+   (docs/architecture.md D3) — trajectory step tags, the trajectory table's kind
+   tag, the custom-model row tag, the recommended-option badge in a question,
+   the plugin install attempt badge, the shortcut key caps — so a plugin's own
+   badge or tag keeps the shape it draws. The host's Tag primitive is a round
+   pill already. corner-shape: round goes with the pill radius: the host's
+   corner-shape sheet gives every element a superellipse, which squares off a
+   pill's ends. */
+body[data-dsh-claude-style] :is(
+  [class*="_tagSystem"],
+  [class*="_tagUser"],
+  [class*="_tagContext"],
+  [class*="_tagMessage"],
+  [class*="_tagTool"],
+  [class*="_tagSubtool"],
+  [class*="_kindTag"]:not([class*="_kindTagIcon"], [class*="_kindTagLabel"]),
+  [class*="_rowTag"],
+  [class*="_optionLine"] > [class*="_badge"],
+  [class*="_attemptBadge"],
+  [class*="_keyBadge"]
+) {
   border-radius: 9999px;
+  corner-shape: round;
 }
 
 /* ---------- chrome details ---------- */
@@ -244,15 +324,17 @@ body[data-dsh-claude-style] [class*="_header"]:has([class*="_tabs"])::after {
    still; "always" plays them whatever the system says. The resolved answer rides
    <body data-dsh-claude-motion> (src/core/prefs.js) because a stylesheet cannot
    talk a media query out of the system's setting.
-   Scoped to the skin's own nodes by their `dsh-claude-` class prefix and
-   `data-dsh-claude-` marks, so the host's own transitions stay exactly as the
-   host wrote them. Two things keep moving on purpose and are untouched: the
+   Scoped to the skin's own nodes by their `dsh-claude-` class prefix, so the
+   host's own transitions stay exactly as the host wrote them. A skin node that
+   carries only a `data-dsh-claude-*` mark and no such class is stilled by the
+   stylesheet that owns that mark, where it means something.
+   Two things keep moving on purpose and are untouched: the
    segmented controls' sliding pill (its transition rides the pill
    pseudo-element, and durations do not inherit, so the control's own
    `transition-duration` never reaches it — the user asked for that slide in
    every mode) and the background-work ring (theme/sidebar.css — a still ring
    reads as broken, not as calm). */
-body[data-dsh-claude-style][%%MOTION_ATTR%%="%%MOTION_REDUCED%%"] :is([class*="dsh-claude-"], [data-dsh-claude-]) {
+body[data-dsh-claude-style][%%MOTION_ATTR%%="%%MOTION_REDUCED%%"] [class*="dsh-claude-"] {
   animation-duration: 0.01ms !important;
   animation-iteration-count: 1 !important;
   transition-duration: 0.01ms !important;

@@ -12,6 +12,7 @@ All notable changes to `dsh-claude-painting` are documented here, newest first.
 - **角色自带配色**：角色表里的调色板会接管页面配色——底色、侧栏、卡片、墨色、强调色与描边都换成所选角色的那一套，明暗各一份；关闭立绘即还原皮肤原本的配色。没有自带调色板的角色只画立绘，不动配色。
 - **立绘素材走宿主半边的只读路由**：角色表在 `/dsh-claude-painting/artwork/themes.json`，素材在 `/dsh-claude-painting/artwork/<角色 id>/<文件名>`，按需读取、支持 Range 分段（动态立绘的视频要能拖动进度），文件与角色 id 都逐段校验后确认落在该角色目录内。
 - **这套皮肤改名为 `dsh-claude-painting`**，与原版 `dsh-claude-style` 是两个插件，路由前缀、设置命名空间与模块 id 都随之改变；两者不能同时启用，界面标记与样式类名沿用 `dsh-claude-` 前缀不变。
+- **立绘跟随设置页的「配色」一档**：立绘的画布接管与角色自带配色在 Claude 一档下生效；「配色」选「跟随宿主」时，画布与页面配色都归宿主，角色不再改写它们，这一层也不再清掉宿主自己的表面色。
 
 ### 问题修复
 
@@ -23,10 +24,157 @@ All notable changes to `dsh-claude-painting` are documented here, newest first.
 - **A character brings its own palette**: the colours in the table take over the page — canvas, sidebar, cards, ink, accent and hairlines all follow the character on screen, once per polarity; turning the artwork off restores the skin's own palette. A character with no palette of its own draws its artwork only.
 - **The artwork is served by the host half over read-only routes**: the character table is at `/dsh-claude-painting/artwork/themes.json` and the files at `/dsh-claude-painting/artwork/<character id>/<file>`, read on demand with Range support (a motion character is a video the browser seeks in), each segment validated and the resolved path checked against that character's directory.
 - **The skin is now `dsh-claude-painting`**, a separate plugin from `dsh-claude-style`: the route prefix, the settings namespace and the module id all follow the new name. The two cannot be enabled at once. The document markers and the stylesheet class names keep their `dsh-claude-` prefix.
+- **The artwork layer follows the Colours choice**: its canvas takeover and the character's own palette apply under Claude; with Colours set to Follow the host, the canvas and the page's colours belong to the host, the character no longer repaints them, and the layer no longer clears the host's own surfaces.
 
 ### Bug Fixes
 
 - **The account-hold page on the macOS Desktop no longer draws a second set of window buttons**: the top-left of a macOS Desktop window belongs to the system, which paints the three red-yellow-green buttons; the page used to draw its own minimize, maximize and close as well, so the window showed two rows of buttons. It draws none of its own now — the starburst and wordmark and the Sign out button take their place in the titlebar row, clear of the three buttons on the left, and the window is still dragged by the empty part of that row.
+
+## [0.10.6] - 2026-10-05
+
+[中文](#cn-0.10.6) | [English](#en-0.10.6)
+
+<h3 id="cn-0.10.6">新增功能</h3>
+
+- **聊天气泡动效**：提交消息的那一下，输入卡片原样浮起一份，一边飞一边把多余的收掉——工具栏左右两组贴着最近的角缩小、淡出，描边与阴影跟着形状收回，草稿里的字跟着变窄的形状一行一行重新排——落地时正好就是那条真实气泡；真实气泡在飞行期间藏着，落定后原位出现。设置页的「动画效果」选了「减弱」、两端不在同一屏、或起点读不到（快捷键与程序化提交）时都不飞；页面切到后台时另有定时器兜底，藏起来的消息一定会放出来。与对话区其他动画一起合并在设置页「对话」页的「聊天区动画效果」开关里，默认开启。
+- **文件变更行**：从 run_code 程序里派发出去的写入与编辑按直接调用的样子显示——行尾带 `+n -m`，展开是改动卡片，路径可点开文件；失败与中断的行保留裁决信息、不再给路径链接，状态另有给读屏的说明。改动内容无法从参数推出的调用保留系统的输入 / 输出卡片。与对话区其他动画一起合并在设置页「对话」页的「聊天区动画效果」开关里，默认开启。
+- **新到的文字先淡后实**：流式回答里新出现的字符从两成不透明度开始，约 0.12 秒内坐实到它自己的颜色，并按到达次序略作错开，读起来像文字正被写下。整段一次到达的内容（切会话、翻历史）、一次几千字的突发、以及刚被折叠重排过的文字都保持本色；主线程忙不过来时它自己让路，闲下来再继续。与对话区其他动画一起合并在设置页「对话」页的「聊天区动画效果」开关里，默认开启。
+- **折叠不再瞬间切换，展开体像卷帘门一样拉下来**：读者点开或收起一行（工具卡片、思考行、命令卡片）或一个过程组时，高度逐帧变化，下方内容被真的推开或收回。门只走读者看得见的那一段，两千像素的展开体和两万像素的展开体在眼前的速度一样；展开体里是多张卡片时（代码卡片加输出卡片）整扇门一起走，不会先挤没能缩的那一张。主线程卡住时门停一下再接着走，不会跳变；读者自己滚动离开底部之后，收尾不会把他拽回去。它与其他对话区动画一起挂在「聊天区动画效果」这个开关上（默认开启），关掉后读者点开收起恢复系统原来的瞬开瞬收。
+- **思考行与过程组自动开合**：模型还在思考时思考行自动开着，思考停下就收回去；运行中的过程组自动展开，这一段过程结束再收起，组体展开时组头的标签仍带实时细节的流光。读者自己按过的行或组，在当时的阶段里不再被改动；「详细」与「完全展开」两档不收纳组体，插件不碰它们。与对话区其他动画一起合并在设置页「对话」页的「聊天区动画效果」开关里，默认开启。
+- **输入框插入符动效**：输入框里的光标改由插件自己绘制，移动时带一段位移过渡；提问卡片的作答框与排队消息的行内编辑框同样覆盖。设置页的「对话」页新增三档：每一格（默认，连打字也滑）、只在移动时（方向键与点击才滑，打字瞬时）、关闭（完全不动手，用浏览器自己的光标）。任何一次测量失败都会把原生光标还回来，不会出现光标看不见的情况。
+- **聊天区跟随交给系统自己的跟随，封顶的工作过程不再掉队**：思考行收起、工具调用行出现这些结构时刻，贴着底部的读者现在被交还给系统自己的跟随，内容成片到达时不再停在离底部几十像素的地方；「标准」与「简洁」档里封顶的过程组（思考与工具输出收在一个带滚动条的组体里）同样补到底部，最新两行不再长期悬在下方。补到底部是按曲线走完的：零散到达的字收得住尾巴，一次涌进上百个 token 那样的厚块则以一段恒定速度滑过去，再落到末尾——流式输出时新加的一行把上文顶起来是平滑的，不再几十像素一下地跳。流式输出期间主滚动条的跟随也交给同一条曲线：系统原来是把末尾一帧写到位，现在这段位移由插件接管并滑过去；输出很快时最新几行会短暂拖在屏幕下缘之外，流一停就滑到位。读者自己发出的消息不受这条曲线影响：宿主把新消息滚进视野的那一下照旧一步到位，插件在消息到达前后短暂让开。读者自己滚动离开底部之后，插件不再插手，直到他自己回到底部。与对话区其他动画一起合并在设置页「对话」页的「聊天区动画效果」开关里，默认开启。
+- **与 dsh-chat-ux 共存**：本机同时装着 [dsh-chat-ux](https://github.com/alm-allen/dsh-chat-ux) 时，上面这几项整体让位——那个插件实现了同一批交互，两套同时生效会互相拦点击、抢同一批按钮、往宿主同一个座位键位按同一优先级注册。设置页的「对话」页把「聊天区动画效果」与「输入框插入符动效」两行的控件禁用，控件本身仍显示你自己设的值，下面另起一行用强调色写明「该选项由 dsh-chat-ux 管理」；你的设置不会被改写，那个插件中途装卸也照常跟随。它不在时这些交互按本插件自己的开关运行。
+
+### 体验优化
+
+- **权限菜单在窗口上方放不下时改为在控件下方展开**：权限分段控件的卡片固定朝上展开，窗口很矮时它的上缘顶出屏幕外，最上面几项点不到。现在上方容不下整张卡片时，它在控件下方展开。
+- **上述动效跟随「动画效果」设置**：卷帘门过渡、聊天气泡动效、新文字淡入、插入符的滑动与闪烁、组头的流光此前只认系统的「减少动态效果」：设置页选「减弱」关不掉它们，选「总是」在系统开着减弱时也照样不动。现在它们读的是设置页解析出的那一档。
+
+### 问题修复
+
+- **「更多模型」的二级弹层在指针离开后收拢**：指针从「更多模型」挪到一级列表的模型行上之后，二级弹层在宽限期结束后收起，一级弹层保持不动。修复前只要指针还在一级弹层里它就永远挂着，遮住一级列表。
+- **模型选择器打开二级弹层的瞬间即定位**：此前打开动作先定位后标记打开，而定位只认已标记打开的卡片，于是二级弹层沿用上一次的位置（连同上一次的窗口宽度算出的坐标），要等下一次指针事件才可能被纠正。现在先标记打开再定位，每次打开都落在当前位置。
+- **插入符拆除后在途的那一帧不再落笔**：瞬落一帧之后恢复过渡属性的那次补写走的是一处未登记的帧，插件拆除时取消不到它，时机凑巧时它会在拆除之后对已收回的图层写入一次。现在这帧与队列帧一样登记在案，拆除时一并取消，回调也不再越过拆除线。
+- **「文件变更行」的开关此前不起作用**：关掉它之后，run_code 程序里派发出去的写入与编辑仍然按新的样式显示。现在关掉即交还系统原来的行，打开即时接管，不需要刷新页面。
+- **拖入附件后，输入区工具栏打开的面板不再被附件区域遮住**：附件存在时，从输入区工具栏按钮打开的面板（模型选择、思考强度等）中间被上方那块附件区域盖住一大截，只在卡片上方和输入框下方各露出一条边，面板里的行点不到。现在这类面板完整显示。
+- **侧栏账号区因故障停用后，设置快捷键不再失灵**：插件的侧栏账号区出错退役后，按 Ctrl+,（macOS 为 ⌘,，网页版宿主为 Ctrl+Alt+,）什么都不打开。现在按键交还宿主，宿主自己的设置快捷键照常打开设置。
+
+### 其他变更
+
+- **昵称与封号页语言只存在设置里**：早先在宿主半边不认这两个字段时存进浏览器本地的值，会在打开页面后写进插件设置，本地那份随后删除；此后两项与其他设置一样只保存在宿主的设置表单里。
+
+<h3 id="en-0.10.6">New Features</h3>
+
+- **Send flight**: on submission the composer card lifts as it is and sheds what is extra on the way — the toolbar's two groups shrink and fade into their nearest corners, the hairline and shadow shrink with the shape, the words in the draft re-flow into the narrowing shape a line at a time — landing exactly on the real bubble, which hides while the flight is up and reappears in place when it lands. Nothing flies when the animation choice is Reduced, when the two ends are not on one screen, or when the origin cannot be read (a shortcut or a programmatic submission); a timer releases a hidden message if the page is in the background. It rides the Chat-area animations switch on the settings page's Conversation tab, on by default.
+- **File change rows**: a write or edit dispatched from inside a run_code program is shown like a directly called one — the row carries the `+n -m` tail, expands into the diff card and its path opens the file; a failed or interrupted row keeps its verdict, drops the path link and announces its state to a screen reader. A call whose changed text cannot be derived from its arguments keeps the host's IN/OUT card. It rides the Chat-area animations switch on the settings page's Conversation tab, on by default.
+- **New text fades in**: characters arriving in a streaming answer start at a fifth opacity and settle to their own colour in about 0.12 s, staggered slightly by arrival order, so the text reads as being written. A block arriving whole (a session switch, a page of history), a burst of thousands of characters and text that just reflowed from a fold all stay solid; when the main thread is too busy the fade gives way and resumes once it is free. It rides the Chat-area animations switch on the settings page's Conversation tab, on by default.
+- **Folds no longer snap: a body rolls down like a door**: opening or closing a row (a tool card, a thinking row, a command card) or a process group now moves the height frame by frame, really pushing the content below away or pulling it back. The door only rolls the stretch the reader can see, so a two-thousand-pixel body and a twenty-thousand-pixel one move at the same speed in front of him; a body holding several cards (a code card plus an output card) rolls as one door rather than squeezing away the card that can shrink. A stalled main thread does not make it jump — the door pauses and carries on — and a reader who scrolled away from the bottom is not pulled back when the fold settles. It rides the Chat-area animations switch together with the entrance fade of an expanded body (on by default); with that switch off, a reader's own press snaps open and shut the way the host does it.
+- **Thinking rows and process groups open and close by themselves**: a thinking row opens while the model reasons and folds back when it stops; a running process group opens and folds back once that piece of work ends, its header keeping the live-detail sweep while the body is open. A row or group the reader pressed himself keeps what he chose for that phase, and the Detailed and Fully expanded tiers — which do not cap a body — are never touched. It rides the Chat-area animations switch on the settings page's Conversation tab, on by default.
+- **Composer caret motion**: the composer's text caret is drawn by the plugin and glides between positions; a question card's answer box and a queued message's inline editor are covered as well. The Conversation tab gains a three-way choice — Every move (the default, typing included), Explicit moves (an arrow key or a click glides, a keystroke lands instantly) and Off. A measurement that fails hands the native caret back, so a caret is never lost.
+- **The chat area's scroll goes back to the host's own follow, and a capped piece of work no longer lags behind**: at the structural moments — a thinking row folding, a tool call row arriving — a reader sitting at the bottom is now handed back to the host's own follow instead of being left tens of pixels short by the burst of content; a process group capped in the Standard and Compact tiers (thinking and tool output kept in one scrolling body) is caught up the same way, so the last two lines no longer hang below the fold. Catching up runs on a curve: a trickle of characters settles softly, and a thick burst — a hundred-odd tokens arriving at once — glides at one steady speed before landing, so while text streams a new line pushes the text above it up smoothly instead of in forty-pixel steps. While content streams, the main scroller's follow runs along the same curve: where the host wrote its end in one frame, that displacement is now taken over and walked, so with a fast stream the newest lines trail just below the fold and slide into place once it stops. A message the reader sends is not affected by that curve: the host's scroll to bring it into view lands at once, and the plugin stands down around the arrival. Once the reader scrolls away from the bottom himself, the plugin stays out of it until he returns. It rides the Chat-area animations switch on the settings page's Conversation tab, on by default.
+- **Coexisting with dsh-chat-ux**: with [dsh-chat-ux](https://github.com/alm-allen/dsh-chat-ux) installed on the same machine these effects stand down whole — that plugin implements the same interactions, and two copies intercept each other's clicks, press the same controls and register the same seat key at the same priority. The settings page's Conversation tab disables the Chat-area animations and Composer caret motion rows while each one goes on showing the value you set, with a line underneath in the accent colour reading "Managed by dsh-chat-ux"; your settings are not rewritten, and the hand-over follows that plugin being loaded or removed mid-session. With it gone they run on this plugin's own switches as usual.
+
+### Improvements
+
+- **The permission menu opens below the control when it does not fit above**: the permission control's card always unfolded upward, so in a short window its top edge ran off-screen and the first rows could not be clicked. It now opens below the control when the card does not fit above.
+- **Those animations follow the Animation setting**: the rolling door, the send flight, the token fade, the caret's glide and blink and the header's live-detail sweep used to read the system's reduced-motion query alone, so Reduced on the settings page did not stop them and Always did nothing while the system asked for reduced motion. They now read the resolved choice.
+
+### Bug Fixes
+
+- **The More-models card folds once the pointer leaves**: moving the pointer from the More-models cell onto a model row of the first level now folds the second level after the grace, the first level staying put. Before, it hung open as long as the pointer stayed anywhere in the first level, covering its list.
+- **The model picker places its second level at the moment it opens**: the open path used to place the card before marking it open, and the placement only reads cards marked open — so the card kept its previous position (with coordinates computed for the previous window width) until some later pointer event corrected it. It is marked open first and placed after, so every open lands on the current position.
+- **The caret's teardown no longer leaves a frame that still draws**: the one-off frame that hands the transition back after an instant landing was untracked, so the teardown could not cancel it and, given the right timing, it fired after the teardown and wrote into a layer that had already been released. It is tracked like the queue's frame now — cancelled with the rest, and its callback stands down past the teardown.
+- **The File change rows switch did nothing**: with it off, a write or edit dispatched from inside a run_code program still drew the new row. Off now hands the host's own row back and on takes it over, without a reload.
+- **A panel opened from the composer's toolbar is no longer covered by the attachment area**: with an attachment in the composer, a panel opened from a toolbar button — the model picker, the reasoning-effort slider — lost its middle to the attachment area above it and showed only a strip above the card and another below the input box, so none of its rows could be clicked. Such panels now draw in full.
+- **The settings shortcut keeps working after the sidebar account area is switched off by a fault**: once the plugin's sidebar account area failed and retired, Ctrl+, (⌘, on macOS, Ctrl+Alt+, in the web host) opened nothing. The keys now go back to the host, and the host's own settings shortcut opens the settings as usual.
+
+### Chores
+
+- **The nickname and the account-hold page's language live in the settings alone**: a value kept in the browser's local storage while the host half did not know these fields yet is written into the plugin settings when the page opens, and the local copy is removed afterwards; from then on both are saved in the host's settings form like every other setting.
+
+**Full Changelog**: [v0.10.5...v0.10.6](https://github.com/Nwflower/dsh-claude-style/compare/v0.10.5...v0.10.6)
+
+## [0.10.5] - 2026-10-04
+
+[中文](#cn-0.10.5) | [English](#en-0.10.5)
+
+<h3 id="cn-0.10.5">新增功能</h3>
+
+- **配色与字体可以交给宿主，与壁纸等主题插件一起使用**：插件以前总是改写宿主的颜色与字体，并在侧栏、对话区刷上实色底，和 dsh-wallpaper-engine 这类同样改写宿主颜色的主题插件同时启用时，壁纸被盖住，谁的颜色生效还取决于加载先后。设置页新增「配色」与「字体」两项，各有「Claude」与「跟随宿主」两档，默认仍是 Claude。选「跟随宿主」后，插件不再改写宿主的颜色或字体，也不再给侧栏、对话区刷底色，只保留布局和控件；插件自己画的弹层、卡片与选择器改用宿主的颜色，同时启用壁纸插件时随它的玻璃效果变成半透明，弹层还会模糊背后的画面以保证文字清楚。选 Claude 时外观与以前完全一致。
+- **接管宿主界面的功能都能单独关闭**：权限分段控件、侧栏搜索、进行中 / 已归档视图、轮次状态行与对话 / 轨迹标签条以前没有开关，不想要其中一项就只能停用整个插件。现在每一项都有自己的开关，关闭后宿主原来的界面立刻回来，再打开立刻生效，都不需要刷新页面。
+- **设置页分为五个分页**：设置项以前排成一整列。现在顶部的分页条把它们分进「通用」「外观」「输入区」「侧栏」「对话」五页；「快捷供应商」紧跟在「重绘模型选择器」下面、两项之间不画分隔线，模型选择器关闭时变灰不可操作，「出现位置」在吉祥物关闭时同样变灰。
+- **吉祥物可以单独选择，像素螃蟹也随智能体的工作换动画**：吉祥物以前由品牌决定，螃蟹只站在工作台首页，只会偶尔掏出电脑敲一阵代码。现在设置页的「吉祥物」可选「跟随品牌」（默认，Claude 品牌下是螃蟹、DeepSeek 品牌下是 Deepy）、「螃蟹」「Deepy」或「关闭」，「出现位置」可选只在首页，或首页与对话页都出现（默认）。螃蟹和 Deepy 一样站在两种首页版面与对话页的输入区上沿，随工作状态换动画：思考时头顶冒出思考泡泡，写回答与调用工具时敲电脑，三个会话同时工作时戴上安全帽，子代理运行时戴耳机或挥手指挥，等你操作时头顶亮起感叹号，压缩上下文时被压扁，完成时蹦跳，失败时双眼打叉、发抖，闲置一分钟后睡着，有动作时惊醒；闲着时偶尔东张西望、挥挥钳子，或者掏出电脑敲一阵代码。点它的左半边或右半边会被戳得往一侧躲，连点四下会被挠痒，按住拖动会被拎起来。螃蟹的帧图随插件内联，约 20 KB。
+
+### 体验优化
+
+- **设置项说明改为只说行为**：设置页十项的说明以前夹带设计缘由（进度圈为什么不停、彩蛋页为什么不跟随界面语言），动辄两三行。现在每条说明只说这一项改什么、各档分别是什么效果；「修改品牌标识」「重绘设置弹层」等动宾式或与其他条目不一致的标题一并统一为名词短语。
+- **Windows 桌面端的顶栏不再是一条单独的色带**：顶栏以前刷着侧栏的颜色，横贯整个窗口，右上角最小化、最大化、关闭三个按钮还托在一块同色的矩形上，打开设置时周围都被遮罩盖暗，只有这块矩形不变。现在顶栏透明，侧栏和主界面各自通到窗口顶端，两者之间的分隔线从顶到底连成一条，主界面左上角的圆角去掉；三个按钮直接落在页面上，打开设置时随页面一起变暗，悬停高亮照常。macOS 与 Web 端不变。
+
+### 问题修复
+
+- **小鲸鱼不再把阴影画在目标、待办与排队卡片上**：DeepSeek 品牌下，小鲸鱼被叠在输入卡片上方的目标、待办与排队卡片顶起时，它身下阴影的末端落在那张卡片的最上缘。现在小鲸鱼抬高 3 像素，阴影落在卡片上，卡片上不再压着一道暗色。
+- **侧栏搜索框与它下面的按钮等高、间距一致，桌面端也不再被顶栏盖住**：搜索框以前比「新会话」「插件」这些行高出 4 像素，与它们相隔也只有 4 像素，排在这一列里比其余各行都松。现在搜索框与各按钮同为 28 像素高，与「新会话」的间隔为 6 像素，与各按钮之间的间隔相同；Windows 桌面端那一行为此少抬高 4 像素，搜索框整块落在顶栏下方，不再被截去上缘。
+- **模型选择器右端不再被上下文计量环压住**：在「轨迹」或「上下文」标签页停留后切换对话，模型选择器最右端的档位文字会落在计量环上，并一直保持到上下文数字再次变化；现在回到对话页就恢复两者的间距。
+
+### 其他变更
+
+- **设置的保存字段新增九项**：插件的设置表单新增 `palette`、`typeface`、`mascot`、`mascotScope`、`permissionsControl`、`workspaceView`、`sidebarSearch`、`turnStatus`、`viewTabs`。宿主半边是旧版本时（更新插件后没有重启宿主），这几项改动保存不下来，重启宿主后恢复正常。
+
+<h3 id="en-0.10.5">New Features</h3>
+
+- **Colours and typefaces can be left to the host, so the skin works alongside wallpaper and other theme plugins**: the plugin always rewrote the host's colours and fonts and painted solid canvases under the sidebar and the conversation, so next to a theme plugin that rewrites the same colours, such as dsh-wallpaper-engine, the wallpaper was covered and whose colours won depended on load order. The settings page adds Colours and Typefaces, each with Claude and Follow the host; Claude stays the default. Under Follow the host the plugin rewrites neither the host's colours nor its fonts and paints no canvas under the sidebar or the conversation, keeping only its layout and controls; its own popovers, cards and pickers take the host's colours, turn translucent with a wallpaper plugin's glass, and blur what lies behind them so their text stays readable. Under Claude the look is exactly as before.
+- **Every feature that takes over the host's interface can be switched off on its own**: the permission control, the sidebar search, the In progress / Archived view, the turn status line and the Chat / Trajectory tabs had no switch, so dropping one meant disabling the whole plugin. Each now has its own switch; off brings the host's original back at once, on brings the feature back at once, with no reload either way.
+- **The settings page is split into five tabs**: the settings used to run down one column. A tab strip at the top now sorts them into General, Appearance, Composer, Sidebar and Conversation; Quick providers sits right under Redraw the model picker with no divider between the two, and greys out while the picker is off, as Where it appears does while the mascot is off.
+- **The mascot is chosen on its own, and the pixel crab follows the agent's work too**: the brand used to decide the mascot, and the crab stood on the Studio home page alone, now and then pulling out its laptop to type. The settings page's Mascot now offers Follow the brand (the default: the crab under Claude, Deepy under DeepSeek), Crab, Deepy or Off, and Where it appears offers the home page alone or the home page and conversations (the default). Like Deepy, the crab stands on the composer of both home layouts and of the conversation, and changes its animation with the work: a thought bubble while the model thinks, typing on its laptop while it writes and calls tools, a hard hat with three sessions at work, headphones or conducting while subagents run, an exclamation mark while it waits on you, squashed while the context is compacted, hopping when a turn finishes, crossed eyes and a shake when something fails, asleep after a quiet minute and startled awake at the next move; between jobs it now and then looks around, waves a claw, or pulls out its laptop to type for a while. A click on its left or right half pokes it aside, four quick clicks tickle it, and pressing it and pulling lifts it. The crab's sheets ride the bundle, about 20 KB.
+
+### Improvements
+
+- **Settings descriptions now state behavior only**: the ten settings rows used to mix design rationale into their descriptions (why the progress ring never stops, why the easter egg ignores the interface language) and ran two to three lines each. Every description now says only what the setting changes and what each option does; verb-form or inconsistent titles such as the brand and sidebar-footer rows are unified to noun phrases.
+- **The Windows titlebar is no longer a band of its own**: the caption row was painted in the sidebar colour across the whole window, and the minimize, maximize and close buttons sat on a block of that colour, which stayed bright while the settings mask darkened everything around it. The row is transparent now: the sidebar and the main area each run to the top of the window, the divider between them runs top to bottom in one line, and the main area loses its rounded top-left corner; the three buttons sit on the page itself, dim with it under the settings mask, and keep their hover highlight. macOS and the web build are unchanged.
+
+### Bug Fixes
+
+- **Deepy no longer paints its shadow across the goal, todo and queue cards**: under the DeepSeek brand, when the goal, todo or queue cards pushed the whale up off the composer card, the tail of the shadow under it landed on the top edge of that card. The whale now sits 3px higher: the shadow rests on the card instead of a dark band being stamped across it.
+- **The sidebar search box matches the height and the rhythm of the rows under it, and no longer hides under the desktop titlebar**: the box stood 4px taller than New session, Plugins and the rows below them, and sat 4px from New session, which left the top of the list looser than the rest of it. The box is 28px like those rows now, 6px above New session, the same step the rows take among themselves; on the Windows Desktop that row rises 4px less, which keeps the whole box below the titlebar instead of cutting its top edge.
+- **The right end of the model trigger no longer sits under the context meter**: after a spell on the Trajectory or Context tab, switching conversations brought the right end of the model trigger under the occupancy ring, and it stayed there until the reading moved again; coming back to the conversation now restores the clearance between the two.
+
+### Chores
+
+- **Nine new stored settings**: the plugin's settings form gains `palette`, `typeface`, `mascot`, `mascotScope`, `permissionsControl`, `workspaceView`, `sidebarSearch`, `turnStatus` and `viewTabs`. With an older host half still running (the plugin updated without restarting the host), changes to these do not save until the host restarts.
+
+**Full Changelog**: [v0.10.4...v0.10.5](https://github.com/Nwflower/dsh-claude-style/compare/v0.10.4...v0.10.5)
+
+## [0.10.4] - 2026-10-03
+
+[中文](#cn-0.10.4) | [English](#en-0.10.4)
+
+<h3 id="cn-0.10.4">体验优化</h3>
+
+- **没有 Anthropic 字体时，界面与正文换成外观相近的字体**：没有把 Anthropic Sans / Serif 装进系统或放进插件 `fonts/` 目录时，界面以前落到 Segoe UI、苹方这类系统字体，对话正文落到 Georgia，字形和排版都和原样差得远。现在插件自带 Inter 与 Noto Serif（SIL OFL 1.1）代替两款 Anthropic 字体，它们的字高、字宽与原字体相差不到百分之二，换字体时文字不会重新换行，粗体用的是字体本身的字重。两款字体只含 Anthropic 字体覆盖的拉丁字符，中文照旧使用系统中文字体；npm 包因此大约增加 214 KB。已经启用 Anthropic 字体的环境不受影响。
+- **品牌标识改为大卡片选择**：设置页的品牌选项由分段小按钮改为一排大卡片，每张卡片放对应的品牌标识（Claude 的陶土星芒、DeepSeek 的蓝鲸），当前品牌的卡片带品牌色描边；后续新增品牌只需添一张卡片。
+- **设置页同时出现在设置对话框与插件页**：0.1.7 起这页只显示在插件页内。现在设置对话框恢复「Claude Style」标签页，两处渲染同一份页面、共用同一份偏好存储，一边改动另一边即时跟上；旧版宿主不受影响，仍只有设置对话框一处。
+
+### 问题修复
+
+- **简洁用量模式下的统计弹层不再出现空置半行与多余分组**：宿主「性能与用量」设置选为简洁时，上下文弹层以前把四个数字拆在「会话统计」和「Token 用量」两个小标题下，三项指标占两行、一项指标占一行，各自留下一处空白格。现在简洁模式下移除分组小标题，总用时、首 token 平均、输出速度与缓存命中四个指标合并为整齐的 2×2 排版。
+- **其他插件放进输入框的模型菜单恢复上下排列**：同时启用 `dsh-thinking-effort` 这类自带模型菜单的插件时，菜单里的各个供应商分组以前被挤成一行横排。现在分组按原样上下排列。
+- **macOS 桌面端的封号彩蛋页不再重复出现窗口按钮**：macOS 桌面壳的窗口左上角是系统画的三个红黄绿按钮，彩蛋页以前又画了一套最小化 / 还原 / 关闭，页面上于是出现两排按钮。现在这页不画自己那套，星芒标与字标、「退出登录」直接排进系统标题栏那一行，并让开左侧的三个按钮；按住这一行的空白处仍然可以拖动窗口。
+- **其他插件的弹层与标签保持原有的形状**：其他插件的元素只要类名里带 `badge` 或 `tag`，以前都会被改成胶囊圆角。额度插件的弹层因此变成四角极圆的方圆形，标题和底部按钮被切掉一角，弹层里各段的分隔线也弯成弧形。现在胶囊圆角只用在宿主自己的徽标与标签上（轨迹标签、自定义模型行的标签、提问里的「推荐」、快捷键按键等），而且两端是正圆弧，不再略方。
+
+<h3 id="en-0.10.4">Improvements</h3>
+
+- **Without the Anthropic fonts, the interface and conversation text use close look-alikes**: when Anthropic Sans and Serif were neither installed on the system nor dropped into the plugin's `fonts/` directory, the interface used to fall back to system fonts such as Segoe UI or PingFang and the conversation body to Georgia, far from the intended letterforms and layout. The plugin now ships Inter and Noto Serif (SIL OFL 1.1) in their place; their letter heights and widths are within two percent of the Anthropic fonts, so text does not rewrap when one replaces the other, and bold text uses the fonts' own weights. Both carry only the Latin characters the Anthropic fonts cover, so Chinese text keeps using the system's Chinese fonts; the npm package grows by about 214 KB. Setups that already have the Anthropic fonts are unaffected.
+- **The brand choice is now a row of large cards**: the settings page's brand option changes from small segments to large cards, each carrying the brand's own mark (Claude's clay starburst, DeepSeek's blue whale) with the active card outlined in the brand accent; a new brand is one more card.
+- **The settings page now shows in both the settings dialog and the plugin page**: since 0.1.7 it lived only on the plugin page. The settings dialog keeps its "Claude Style" tab again — both render the same page against the same preference store, so a change in one appears in the other at once. Older hosts are unaffected and keep the dialog tab as the only seat.
+
+### Bug Fixes
+
+- **The stats popover under compact usage no longer shows half-empty rows and redundant groups**: when the host's performance and usage setting was set to compact, the context popover previously split the four figures under "Session statistics" and "Token usage" headings, leaving awkward empty slots in two separate grids. The compact mode now removes the section headings and places total time, average TTFT, output speed, and cache hit share together into a clean 2x2 layout.
+- **A model menu another plugin puts in the composer stacks its groups again**: with a plugin that brings its own model menu, such as `dsh-thinking-effort`, the menu's provider groups used to be squeezed into one horizontal row. They stack top to bottom as the plugin draws them now.
+- **The account-hold page on the macOS Desktop no longer draws a second set of window buttons**: the top-left of a macOS Desktop window belongs to the system, which paints the three red-yellow-green buttons; the page used to draw its own minimize, maximize and close as well, so the window showed two rows of buttons. It draws none of its own now — the starburst and wordmark and the Sign out button take their place in the titlebar row, clear of the three buttons on the left, and the window is still dragged by the empty part of that row.
+- **Other plugins' popovers and tags keep their own shape**: any element of another plugin whose class name contained `badge` or `tag` used to be turned into a pill. A quota plugin's popover became a squarish blob with very round corners, its title and bottom buttons clipped at the corners and the dividers between its sections bent into arcs. The pill radius now applies only to the host's own badges and tags (trajectory tags, the custom model row tag, the Recommended mark in a question, shortcut key caps and the like), and their ends are true round arcs instead of slightly squared ones.
+
+**Full Changelog**: [v0.10.3...v0.10.4](https://github.com/Nwflower/dsh-claude-style/compare/v0.10.3...v0.10.4)
 
 ## [0.10.3] - 2026-10-01
 
@@ -193,7 +341,7 @@ All notable changes to `dsh-claude-painting` are documented here, newest first.
 
 ### 体验优化
 
-- **像素螃蟹改用 Claude Code 的原版动画**：工作台首页输入卡片上的螃蟹原来是按 Claude Code 的样子手绘的十一个姿势；现在换成 Claude Code 自己的钓鱼动画，逐帧照搬（43 帧、每帧 80 毫秒，约 3.4 秒）：眨眼、举竿甩过卡片边沿、跳一下侧过身钓鱼、收竿转回正面，像素边缘清晰。鱼竿仍用随主题变化的灰色，触发方式（点击、指针移开、闲置时隔二三十秒自己来一次，减少动态效果时只认点击）不变。
+- **像素螃蟹改用 Claude Code 的原版动画**：工作台首页输入卡片上的螃蟹原来是按 Claude Code 的样子手绘的十一个姿势；现在换成 Claude Code 自己的敲代码动画，逐帧照搬（43 帧、每帧 80 毫秒，约 3.4 秒）：眨眼、掏出笔记本电脑放到卡片边沿、跳一下侧过身敲一阵键盘、收起电脑转回正面，像素边缘清晰。电脑仍用随主题变化的灰色，触发方式（点击、指针移开、闲置时隔二三十秒自己来一次，减少动态效果时只认点击）不变。
 - **对话中输入框的发送键改成 Claude Code 的回车图标**：原来是等宽字体里的「↵」字符，有内容时变成陶土橙；现在是按 Claude Code 画的回车箭头（上沿一小段、沿右侧向下、再沿底边向左到箭头），线条清晰，输入框有内容时用正文墨色，空着时仍是浅灰。
 - **桌面端侧栏的品牌行上移 10px**：桌面端的侧栏从 40px 高的标题栏下方开始，品牌标志因此比 Web 端低出一截；现在品牌行（连同其下的新会话、插件与会话列表）上移 10px，悬停时换上的搜索框仍整个露在标题栏下方，与标题栏里的收起按钮也不重叠。Web 端不变。
 - **用量面板的倍数趣味行从二十九本书扩到六十五本**：书单补入《黄色壁纸》《变形记》《化身博士》《野性的呼唤》《时间机器》《绿野仙踪》《黑暗之心》《浮士德》《螺丝在拧紧》《伊索寓言》《彼得·潘》《君主论》《隐形人》《安徒生童话》《世界大战》《善恶的彼岸》《白牙》《沉思录》《格林童话》《格列佛游记》《瓦尔登湖》《鲁滨逊漂流记》《神曲》《包法利夫人》《查拉图斯特拉如是说》《奥德赛》《双城记》《远大前程》《理想国》《罪与罚》《利维坦》《安娜·卡列尼娜》《卡拉马佐夫兄弟》《堂吉诃德》《基督山伯爵》《悲惨世界》，长度都是全文以 o200k_base 分词器实测的值（英文原著或通行英译本，《浮士德》为德文原文）。书单仍从《道德经》排到《追忆似水年华》，用量越过的书更密，趣味行落到的那本书离实际用量更近。
@@ -210,7 +358,7 @@ All notable changes to `dsh-claude-painting` are documented here, newest first.
 
 ### Improvements
 
-- **The pixel crab plays Claude Code's own animation**: the crab on the Studio home page's composer card used to be eleven hand-drawn poses after Claude Code's; it now plays Claude Code's own fishing animation frame for frame (43 frames of 80 ms, about 3.4 s) — a blink, the rod raised and cast past the card's edge, a hop into a side-on stance to fish, the rod reeled in as it turns back — with crisp pixel edges. The rod keeps its theme-following grey, and what sets it off (a click, the pointer leaving it, on its own every half minute or so, only a click under reduced motion) is unchanged.
+- **The pixel crab plays Claude Code's own animation**: the crab on the Studio home page's composer card used to be eleven hand-drawn poses after Claude Code's; it now plays Claude Code's own laptop animation frame for frame (43 frames of 80 ms, about 3.4 s) — a blink, a laptop pulled out onto the card's edge, a hop into a side-on stance to type away, the laptop put away as it turns back — with crisp pixel edges. The laptop keeps its theme-following grey, and what sets it off (a click, the pointer leaving it, on its own every half minute or so, only a click under reduced motion) is unchanged.
 - **The in-conversation composer's send button uses Claude Code's return glyph**: it used to be the "↵" character from the monospace font, turning clay once there was text; it is now Claude Code's drawn return arrow (a short stub along the top, down the right side, back along the bottom to the arrowhead) in crisp strokes, in the body ink once the box holds text and still pale grey while it is empty.
 - **The desktop sidebar's brand row sits 10px higher**: the desktop sidebar starts below the 40px titlebar, which left the brand mark lower than on the web; the brand row (and the New session, Plugins and session list below it) now rises 10px, with the search box that takes its place on hover still wholly below the titlebar and clear of the collapse button there. The web build is unchanged.
 - **The usage panel's yardstick line grows from twenty-nine to sixty-five books**: the list adds The Yellow Wallpaper, Metamorphosis, The Strange Case of Dr Jekyll and Mr Hyde, The Call of the Wild, The Time Machine, The Wonderful Wizard of Oz, Heart of Darkness, Faust, The Turn of the Screw, Aesop's Fables, Peter Pan, The Prince, The Invisible Man, Andersen's Fairy Tales, The War of the Worlds, Beyond Good and Evil, White Fang, Meditations, Grimms' Fairy Tales, Gulliver's Travels, Walden, Robinson Crusoe, The Divine Comedy, Madame Bovary, Thus Spoke Zarathustra, The Odyssey, A Tale of Two Cities, Great Expectations, The Republic, Crime and Punishment, Leviathan, Anna Karenina, The Brothers Karamazov, Don Quixote, The Count of Monte Cristo and Les Misérables, each sized by feeding its full text to the o200k_base tokenizer (the English original or the standard English translation; Faust in the German original). The list still runs from Tao Te Ching to In Search of Lost Time; with the books set closer together, the one the line lands on sits nearer the real usage.
@@ -325,7 +473,7 @@ All notable changes to `dsh-claude-painting` are documented here, newest first.
 - **两套首页版面，设置页随时切换**：新增「首页版面」设置项。**经典**沿用居中大标题加输入卡片；**工作台**把标题移到左上角并固定为一句「What's up next, 用户名？」（无衬线小字，与品牌标记同一行），输入框改用对话内的单行样式贴住窗口底部、上方一行细边框上下文胶囊，标题与一块 480px 窄栏用量面板贴着输入框左缘排布——概览页签是六个数字格（会话数、消息数、Token 总量、活跃天数、高峰时段、最常用模型）与 26 周按天热力图（等分列方格、蓝色数据色阶）；模型页签是每天一根按模型颜色自下而上堆叠的柱子，下面跟一份模型排行（色块、模型名、输入与输出、占比，超过六行折成「再显示 N 个」，展开后末尾是「收起」），柱与色块共用同一套按名次取色的蓝色色阶；右上角的「全部 / 30 天 / 7 天」范围切换过滤数字格（含高峰时段）、趣味行与模型排行，热力图与柱状图保持自身窗口；所选范围内的用量超过一本书时，热力图下方出现倍数趣味行：书从《动物农场》到《追忆似水年华》共十一本，每次回到新会话页随机换一本，范围内用量还不到这本书时退到已经超过的最长那本。面板只在新会话页出现，进入对话后自动消失。
 - **用量数据在本机汇总**：新增只读路由 `GET /dsh-claude-style/usage`（与用户名路由同一同源护栏）。装了 `dsh-cost-meter` 时直接读它的账本缓存（只读），否则读本机会话日志自行汇总，并按日志文件增量缓存——冷启动首次约两秒，之后每次启动约 3 毫秒。两种来源都给出每个模型的四类 token 与每天按模型拆分的 token（`models` 与 `days[].models`），模型页签的柱状图与排行读它们；账本按「提供方:模型」记账，同一模型经不同提供方的用量合成一行。账本不记小时，读账本时其余数字先出，高峰时段随后由本机会话日志按天算出补上。汇总不可用（旧宿主半边或汇总失败）时，面板改用宿主会话列表自带的投影值出数。
 - **面板先画骨架再填数**：数字到达前先画好外框、占位数字、空热力格与模型行的占位条，到达后只替换文字、格子颜色与条长，整个版面不跳动；取不到数据的格子画破折号，不画零。
-- **输入卡片上的像素螃蟹**：工作台版面的新会话页上（经典版面没有），输入卡片上沿靠右站着 Claude Code 的像素螃蟹。点它一下、指针从它身上移开时、以及页面开着时每隔 25–45 秒，它照 Claude Code 的样子钓一次鱼：半转身眨眼，举竿甩到卡片边上，侧身钓一会儿，收竿转回正面，约三秒；系统要求减少动态效果时（例如 Windows 关掉了「在 Windows 中显示动画」），只有点它才播放。只有螃蟹本身接收指针，鱼竿挥动的空白处不挡点击。
+- **输入卡片上的像素螃蟹**：工作台版面的新会话页上（经典版面没有），输入卡片上沿靠右站着 Claude Code 的像素螃蟹。点它一下、指针从它身上移开时、以及页面开着时每隔 25–45 秒，它照 Claude Code 的样子敲一次代码：半转身眨眼，掏出笔记本电脑放到卡片边上，侧身敲一会儿键盘，收起电脑转回正面，约三秒；系统要求减少动态效果时（例如 Windows 关掉了「在 Windows 中显示动画」），只有点它才播放。只有螃蟹本身接收指针，电脑挥动的空白处不挡点击。
 - **热力图的日期提示**：指针停在热力图的某一天上，立刻浮出 Claude Code 样式的深色提示，写着日期和当天的消息数（如「9月9日 — 15,955」）；靠两端的几列提示贴着格子外沿，不会伸出面板。会话列表兜底来源没有按天的消息数，此时提示写当天的 Token。概览的数字格同时改用 Claude Code 的叫法：消息数、Token 总量、最常用模型（模型名不加粗）。
 - **经典首页的问候更多了**：经典版面的大标题不再每个时段只有一句，早上、午间、下午、晚上、深夜各有一组问候，另有几句不分时段；每次回到新会话页随机换一句，同一次停留里不会跳动。
 - **接入 HDSL 启动器的账号信息**：由 HDSL 启动的实例，昵称与头像会优先取启动器里的账号。昵称按「自定义昵称 → 官方账号昵称 → HDSL 昵称 → 上次探测到的系统用户名 → 系统用户名 → `User`」回退，头像按「官方账号头像 → HDSL 头像 → Claude 徽标」回退。宿主半边新增两条只读私有路由，与用户名路由同级过宿主请求栅栏：`GET /dsh-claude-style/hdsl` 回账号元数据（不含头像文件的绝对路径），`GET /dsh-claude-style/hdsl-skin.png` 回头像图片。契约版本读不到或不认识时整组忽略；头像文件被删除时回落到徽标。
@@ -335,7 +483,7 @@ All notable changes to `dsh-claude-painting` are documented here, newest first.
 - **Two home layouts, switchable in the settings page**: a new Home layout preference. **Classic** keeps the centered headline over the composer card; **Studio** pins the greeting to the top left as one fixed line ("What's up next, <user>?", in the sans UI face on the brand mark's line), docks the composer in the conversation's single-line form at the window's bottom edge with a row of hairline context chips above it, and sets the greeting and a 480px usage panel against the composer's left edge — an Overview tab with six stat cells (sessions, messages, total tokens, active days, peak hour, favorite model) and a twenty-six-week per-day heat grid of square cells in equal columns, and a Models tab stacking each day's per-model tokens into one bar over a ranked model list (swatch, model name, input and output, share; past six rows it folds behind a "show more" row, and the open list ends in a "show less" row), both reading the same rank-ordered blue ramp. The All / 30d / 7d range pills filter the tiles (the peak hour included), the multiplier line and the model list while the grid and the chart keep their own windows, and once the picked range's total passes one book a multiplier line appears under the grid — eleven books from Animal Farm to In Search of Lost Time, a fresh one drawn each time the new-conversation page comes back, stepping down to the longest book the range has passed when it has not reached the drawn one. The panel appears on the new-conversation page only and steps away once a session is open.
 - **The usage numbers are folded locally**: a new read-only route, `GET /dsh-claude-style/usage`, behind the same same-origin fence as the username route. With `dsh-cost-meter` installed it reads that plugin's ledger cache (read-only); otherwise the host half folds the local session logs itself and caches the result incrementally per log file — about two seconds on the first cold pass, about 3 ms per start afterwards. Both sources answer each model's four token buckets and each day's per-model tokens (`models` and `days[].models`), which the Models tab's chart and ranking read; the ledger books usage per provider and model, and one model served by several providers is one row. The ledger keeps no hours, so with it the other figures land first and the peak hour follows a moment later, folded per day from the local session logs. When the fold cannot answer (an older host half or a failed pass), the panel falls back to the projection block each host session row carries.
 - **The panel draws its skeleton before its numbers**: the frame, number placeholders, an empty heat grid and stand-in share bars come first; arriving values replace only the text, the cell colours and the bar lengths, so nothing shifts. A figure no source can answer is a dash, never a zero.
-- **A pixel crab on the composer card**: on the new-conversation page of the Studio layout (the Classic layout has none), Claude Code's pixel crab stands on the composer card's top edge near its right end. When it is clicked, when the pointer leaves it, and every 25–45 seconds while the page is in view, it plays Claude Code's fishing routine — a half turn and a wink, the rod cast down onto the card's edge, a spell of fishing side-on, and the rod put away as it turns back, about three seconds; with reduced motion requested (Windows' "Show animations in Windows" turned off, for one) only a click plays it. Only the crab itself takes the pointer, so the room the rod swings through never blocks a click.
+- **A pixel crab on the composer card**: on the new-conversation page of the Studio layout (the Classic layout has none), Claude Code's pixel crab stands on the composer card's top edge near its right end. When it is clicked, when the pointer leaves it, and every 25–45 seconds while the page is in view, it plays Claude Code's laptop routine — a half turn and a wink, a laptop brought out onto the card's edge, a spell of typing side-on, and the laptop put away as it turns back, about three seconds; with reduced motion requested (Windows' "Show animations in Windows" turned off, for one) only a click plays it. Only the crab itself takes the pointer, so the room the laptop swings through never blocks a click.
 - **Day tips on the heat grid**: resting the pointer on a day of the heat grid shows Claude Code's dark tip at once, with the date and that day's messages ("Sep 9 — 15,955"); over the columns at either end the tip lines up with the cell's outer edge and stays inside the panel. The session list's fallback has no per-day message count, and its tips name the day's tokens instead. The Overview tiles take Claude Code's names as well: Messages, Total tokens and Favorite model (the model name at regular weight).
 - **More greetings on the classic home page**: the classic headline no longer has one line per time of day — morning, midday, afternoon, evening and night each have a pool, plus a few lines for any hour; a fresh line is drawn each time the new-conversation page comes back and holds still while you stay.
 - **HDSL launcher accounts are picked up**: an instance started by HDSL prefers the launcher's account for both the nickname and the picture. The nickname falls back through the custom nickname → the signed-in account's name → the HDSL account name → the last probed system user → the system user → `User`; the picture through the account's avatar → the HDSL avatar → the Claude mark. The host half gains two read-only private routes behind the same request fence as the username route: `GET /dsh-claude-style/hdsl` answers the account metadata (never the avatar file's absolute path) and `GET /dsh-claude-style/hdsl-skin.png` answers the image. A contract version that is missing or unknown voids the whole group, and a deleted avatar file falls back to the mark.

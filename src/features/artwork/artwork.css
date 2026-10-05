@@ -66,7 +66,7 @@ html body[data-dsh-claude-style][%%ARTWORK_PALETTE_ATTR%%][%%BRAND_ATTR%%][data-
 
 /* The mapping itself: the palette's surfaces, inks and accent onto one canvas
    and one accent for the whole page. */
-html body[data-dsh-claude-style][%%ARTWORK_PALETTE_ATTR%%][%%BRAND_ATTR%%] {
+html body[data-dsh-claude-style]%%PALETTE_CLAUDE%%[%%ARTWORK_PALETTE_ATTR%%][%%BRAND_ATTR%%] {
     --dsh-claude-canvas: var(--dsh-claude-art-canvas);
     --dsh-claude-sidebar-canvas: var(--dsh-claude-art-sidebar);
     --dsh-claude-raised: var(--dsh-claude-art-raised);
@@ -117,30 +117,30 @@ html body[data-dsh-claude-style][%%ARTWORK_PALETTE_ATTR%%][%%BRAND_ATTR%%] {
 /* The canvas moves up to <html> while the layer is on: the body's background
    paints over a negative z-index child, and the document element cannot read
    the body's tokens, so each palette states its canvas here. */
-html:has(body[%%ARTWORK_ATTR%%]) {
+html:has(body[%%ARTWORK_ATTR%%]%%PALETTE_CLAUDE%%) {
     background-color: #141413 !important;
 }
 
-html:has(body[%%ARTWORK_ATTR%%]:not([data-ds-dark-theme])) {
+html:has(body[%%ARTWORK_ATTR%%]%%PALETTE_CLAUDE%%:not([data-ds-dark-theme])) {
     background-color: #fcfcfb !important;
 }
 
-html:has(body[%%ARTWORK_ATTR%%][%%BRAND_ATTR%%="%%BRAND_DEEPSEEK%%"]) {
+html:has(body[%%ARTWORK_ATTR%%]%%PALETTE_CLAUDE%%[%%BRAND_ATTR%%="%%BRAND_DEEPSEEK%%"]) {
     background-color: #13161d !important;
 }
 
-html:has(body[%%ARTWORK_ATTR%%][%%BRAND_ATTR%%="%%BRAND_DEEPSEEK%%"]:not([data-ds-dark-theme])) {
+html:has(body[%%ARTWORK_ATTR%%]%%PALETTE_CLAUDE%%[%%BRAND_ATTR%%="%%BRAND_DEEPSEEK%%"]:not([data-ds-dark-theme])) {
     background-color: #fafbff !important;
 }
 
 /* A character that brought a palette paints the canvas itself. Its colour is
    stated once per polarity by the feature, and on the document element — which
    is where <html> can read it — so these follow the fixed pairs above. */
-html:has(body[data-dsh-claude-style][%%ARTWORK_PALETTE_ATTR%%][%%BRAND_ATTR%%]) {
+html:has(body[data-dsh-claude-style]%%PALETTE_CLAUDE%%[%%ARTWORK_PALETTE_ATTR%%][%%BRAND_ATTR%%]) {
     background-color: var(--dsh-claude-art-canvas-dark) !important;
 }
 
-html:has(body[data-dsh-claude-style][%%ARTWORK_PALETTE_ATTR%%][%%BRAND_ATTR%%]:not([data-ds-dark-theme])) {
+html:has(body[data-dsh-claude-style]%%PALETTE_CLAUDE%%[%%ARTWORK_PALETTE_ATTR%%][%%BRAND_ATTR%%]:not([data-ds-dark-theme])) {
     background-color: var(--dsh-claude-art-canvas-light) !important;
 }
 
@@ -148,7 +148,7 @@ html:has(body[data-dsh-claude-style][%%ARTWORK_PALETTE_ATTR%%][%%BRAND_ATTR%%]:n
    frame, the app root and the conversation component's own root all read it, so
    clearing the token opens the whole canvas at once. Surfaces that carry
    content take it back below. */
-body[data-dsh-claude-style][%%ARTWORK_ATTR%%] {
+body[data-dsh-claude-style]%%PALETTE_CLAUDE%%[%%ARTWORK_ATTR%%] {
     --dsw-alias-bg-base: transparent !important;
 }
 
@@ -156,7 +156,7 @@ body[data-dsh-claude-style][%%ARTWORK_ATTR%%] {
    token as transparent yet still computed to the opaque canvas, because the
    host paints that element directly. It is matched through the conversation
    column it holds, which keeps every other frame on its own surface. */
-html body[data-dsh-claude-style][%%ARTWORK_ATTR%%] #root [class*="_frame"]:has(> [class*="centerCol"]) {
+html body[data-dsh-claude-style]%%PALETTE_CLAUDE%%[%%ARTWORK_ATTR%%] #root [class*="_frame"]:has(> [class*="centerCol"]) {
     background-color: transparent !important;
 }
 
@@ -166,9 +166,9 @@ html body[data-dsh-claude-style][%%ARTWORK_ATTR%%] #root [class*="_frame"]:has(>
    these same elements with its own `!important`, and the extra attribute (plus
    the root id on #root) is what keeps these rules ahead of that copy whatever
    order the two stylesheets arrive in. */
-html body[data-dsh-claude-style][%%ARTWORK_ATTR%%],
-html body[data-dsh-claude-style][%%ARTWORK_ATTR%%] #root,
-html body[data-dsh-claude-style][%%ARTWORK_ATTR%%] :is([data-pane="conversation"], [class*="centerCol"]) {
+html body[data-dsh-claude-style]%%PALETTE_CLAUDE%%[%%ARTWORK_ATTR%%],
+html body[data-dsh-claude-style]%%PALETTE_CLAUDE%%[%%ARTWORK_ATTR%%] #root,
+html body[data-dsh-claude-style]%%PALETTE_CLAUDE%%[%%ARTWORK_ATTR%%] :is([data-pane="conversation"], [class*="centerCol"]) {
     background-color: transparent !important;
 }
 
@@ -177,7 +177,7 @@ html body[data-dsh-claude-style][%%ARTWORK_ATTR%%] :is([data-pane="conversation"
    behind it readable through it. The composer's seat deliberately does not: it
    spans the whole column, and the character stands in that strip — the input
    card carries its own surface, which is what hides the transcript. */
-html body[data-dsh-claude-style][%%ARTWORK_ATTR%%] :is([class*="settingsArea"] [class*="_panel"], [class*="settingsArea"] [role="dialog"], [class*="_overlay"] > [class*="_panel"]) {
+html body[data-dsh-claude-style]%%PALETTE_CLAUDE%%[%%ARTWORK_ATTR%%] :is([class*="settingsArea"] [class*="_panel"], [class*="settingsArea"] [role="dialog"], [class*="_overlay"] > [class*="_panel"]) {
     --dsw-alias-bg-base: var(--dsh-claude-canvas) !important;
 }
 
@@ -185,13 +185,13 @@ html body[data-dsh-claude-style][%%ARTWORK_ATTR%%] :is([class*="settingsArea"] [
    seat, and the character stands in it: it washes the feet. The band is turned
    off rather than the surface, so the seat still hides the transcript behind
    the composer and the character keeps its outline. */
-html body[data-dsh-claude-style][%%ARTWORK_ATTR%%] [data-composer-seat]::before {
+html body[data-dsh-claude-style]%%PALETTE_CLAUDE%%[%%ARTWORK_ATTR%%] [data-composer-seat]::before {
     --dsw-alias-bg-base: transparent !important;
 }
 
 /* The right sidebar's panes state no surface of their own — the frame was
    behind them — so they get one. */
-html body[data-dsh-claude-style][%%ARTWORK_ATTR%%] :is([data-rightbar-col], [data-dockkit-pane], [data-dockkit-float]) {
+html body[data-dsh-claude-style]%%PALETTE_CLAUDE%%[%%ARTWORK_ATTR%%] :is([data-rightbar-col], [data-dockkit-pane], [data-dockkit-float]) {
     background: var(--dsh-claude-canvas) !important;
 }
 

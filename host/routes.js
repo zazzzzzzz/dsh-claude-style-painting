@@ -4,14 +4,14 @@
  * These are the surfaces D11 describes — the model copy document, the webfonts,
  * the OS user, the HDSL account, Deepy's sheets, session deletion and the usage
  * and search roll-ups — each registered on the host's web server under this
- * plugin's route prefix. Registration is defensive: a host without a web server
- * must still activate the skin, so every route is registered in its own try and
- * a refusal only warns.
+ * plugin's route prefix. Every route is registered on its own: one path the web
+ * server refuses is reported, and the other routes still register.
  */
-import { createReadStream, readFileSync, readdirSync, rmSync, statSync } from 'node:fs'
-import { homedir, userInfo } from 'node:os'
+import { createReadStream, existsSync, readFileSync, readdirSync, rmSync, statSync } from 'node:fs'
+import { userInfo } from 'node:os'
 import { dirname, extname, join, resolve, sep } from 'node:path'
 import { fileURLToPath } from 'node:url'
+import { harnessPath } from './harness-home.js'
 import { createHdslAccount } from './hdsl.js'
 import { QUERY_MAX, createSessionSearch } from './search.js'
 import { createUsage } from './usage.js'
@@ -24,7 +24,8 @@ const COPY_FILE = 'model-descriptions.json'
  * Webfonts this plugin serves under `${ROUTE_PREFIX}/fonts/`, mapped to their
  * content type. The table is a whitelist: the filename is the whole request
  * contract, so nothing below the package's `fonts/` directory is reachable
- * and no path traversal is possible. The JetBrains Mono files ship in the
+ * and no path traversal is possible. The JetBrains Mono files and the two
+ * look-alike faces behind the Anthropic ones (Inter, Noto Serif) ship in the
  * npm package; the Anthropic faces do not (copyright) — their entries exist so
  * a user-supplied copy in `fonts/` is served, and readFileSync's ENOENT turns
  * into a 404 the browser half's font stacks fall back from.
@@ -34,6 +35,8 @@ const FONT_FILES = {
   'JetBrainsMonoItalicVariable.ttf': 'font/ttf',
   'AnthropicSansWebText.ttf': 'font/ttf',
   'AnthropicSerifWebText.ttf': 'font/ttf',
+  'InterVariable.woff2': 'font/woff2',
+  'NotoSerifVariable.woff2': 'font/woff2',
 }
 /**
  * Deepy's animation sheets, served under `${ROUTE_PREFIX}/deepy/` from the
@@ -142,29 +145,21 @@ const DELETE_BODY_MAX = 4096
  * @returns 401 / 403, or undefined when the request may proceed.
  */
 function refusalOf(ctx, req) {
-  try {
-    const connection = ctx.get('connection')
-    if (typeof connection?.requestRejection === 'function') return connection.requestRejection(req)
-  } catch { /* no connection service: the local fence below */ }
+  const connection = ctx.get('connection')
+  if (typeof connection?.requestRejection === 'function') return connection.requestRejection(req)
   const host = req.headers.host
   if (host !== undefined) {
-    let name
-    try {
-      name = new URL(`http://${host}`).hostname
-    } catch {
-      return 403
-    }
+    // A Host header that is no host name at all is refused.
+    if (!URL.canParse(`http://${host}`)) return 403
+    const name = new URL(`http://${host}`).hostname
     if (name !== 'localhost' && name !== '[::1]' && !/^127\.\d+\.\d+\.\d+$/.test(name)) return 403
   }
   const site = req.headers['sec-fetch-site']
   if (site !== undefined && site !== 'same-origin' && site !== 'none') return 403
   const origin = req.headers.origin
   if (origin === undefined) return undefined
-  try {
-    return new URL(origin).host === host ? undefined : 403
-  } catch {
-    return 403
-  }
+  if (!URL.canParse(origin)) return 403
+  return new URL(origin).host === host ? undefined : 403
 }
 
 /** Send one JSON response. */
@@ -178,44 +173,28 @@ function sendJson(res, status, payload) {
   res.end(body)
 }
 
-/** The harness sessions root: `<DSH home>/sessions`, resolved the host's own way. */
-function sessionsRoot(ctx) {
-  try {
-    const dshHomePath = ctx.get('dshHomePath')
-    if (typeof dshHomePath === 'function') return dshHomePath('sessions')
-  } catch { /* no home-path service: fall back to the environment */ }
-  const home = process.env.DSH_HOME ?? join(homedir(), '.dsh')
-  return join(home, 'sessions')
-}
-
 /**
  * Whether the host holds this session open right now.
  *
  * A live session's log is open and being appended to, so its directory must not
- * be removed under the writer. When the live set cannot be read, the answer is
- * "live": an unreadable set cannot authorize the deletion.
+ * be removed under the writer. A sessions service that offers no way to read
+ * its live set answers "live": an unreadable set cannot authorize the
+ * deletion. A read that throws fails the request (500), which refuses the
+ * deletion as well.
  */
 function sessionIsLive(ctx, sessionId) {
-  let sessions = null
-  try {
-    sessions = ctx.get('sessions')
-  } catch {
-    sessions = null
-  }
+  const sessions = ctx.get('sessions')
+  // A host with no sessions service holds nothing open.
   if (sessions === null || sessions === undefined) return false
-  try {
-    if (typeof sessions.get === 'function') {
-      const found = sessions.get(sessionId)
-      return found !== undefined && found !== null
+  if (typeof sessions.get === 'function') {
+    const found = sessions.get(sessionId)
+    return found !== undefined && found !== null
+  }
+  if (typeof sessions.list === 'function') {
+    const listed = sessions.list()
+    if (Array.isArray(listed)) {
+      return listed.some((item) => (typeof item === 'string' ? item : item?.id ?? item?.sessionId) === sessionId)
     }
-    if (typeof sessions.list === 'function') {
-      const listed = sessions.list()
-      if (Array.isArray(listed)) {
-        return listed.some((item) => (typeof item === 'string' ? item : item?.id ?? item?.sessionId) === sessionId)
-      }
-    }
-  } catch {
-    return true
   }
   return true
 }
@@ -249,7 +228,7 @@ function readRequestBody(req, limit) {
  * retries through the miss branch.
  */
 async function unarchiveSession(ctx, sessionId) {
-  const registry = ctx.get?.('workspaceRegistry')
+  const registry = ctx.get('workspaceRegistry')
   if (typeof registry?.unarchiveSession !== 'function') return
   await registry.unarchiveSession(sessionId)
 }
@@ -282,6 +261,7 @@ async function deleteSession(ctx, req, res) {
   try {
     request = raw === null ? null : JSON.parse(raw)
   } catch {
+    // A body that is not JSON is the client's error: the id check below answers 400.
     request = null
   }
   const sessionId = request !== null && typeof request.sessionId === 'string' ? request.sessionId : ''
@@ -293,21 +273,14 @@ async function deleteSession(ctx, req, res) {
     sendJson(res, 409, { ok: false, error: 'session is open' })
     return
   }
-  const root = resolve(sessionsRoot(ctx))
+  const root = resolve(harnessPath(ctx, 'sessions'))
   let dir = null
   // The root listing is the storage's own answer, so a failure there is a
-  // fault and propagates to the route's 500 answer; a candidate that stats as
-  // absent is the OS's "not under this entry" — the expected state the scan
-  // moves past.
+  // fault and propagates to the route's 500 answer; a candidate that does not
+  // exist is "not under this entry", and the scan moves past it.
   for (const entry of readdirSync(root)) {
     const candidate = join(root, entry, sessionId)
-    let stat
-    try {
-      stat = statSync(candidate)
-    } catch {
-      continue
-    }
-    if (stat.isDirectory()) {
+    if (statSync(candidate, { throwIfNoEntry: false })?.isDirectory() === true) {
       dir = candidate
       break
     }
@@ -321,13 +294,8 @@ async function deleteSession(ctx, req, res) {
     sendJson(res, 403, { ok: false, error: 'session directory outside the sessions root' })
     return
   }
-  try {
-    rmSync(dir, { recursive: true, force: true })
-  } catch (error) {
-    // A storage fault answers 500 with the OS error — nothing is swallowed.
-    sendJson(res, 500, { ok: false, error: String(error?.message ?? error) })
-    return
-  }
+  // A storage fault propagates to the route's 500 answer, carrying the OS error.
+  rmSync(dir, { recursive: true, force: true })
   await unarchiveSession(ctx, sessionId)
   sendJson(res, 200, { ok: true, ghost: false })
 }
@@ -355,16 +323,16 @@ export function registerRoutes(ctx, scope) {
    * @param headers - content-type / cache-control pair for the payload.
    */
   const sendFile = (res, method, path, headers) => {
-    let body
-    try {
-      // Read per request: the files are small, and an in-place edit then
-      // shows up on reload without restarting the host.
-      body = readFileSync(path)
-    } catch {
+    // An optional font the user never dropped in, or a sheet name no build
+    // shipped, is absent: 404.
+    if (!existsSync(path)) {
       res.writeHead(404)
       res.end()
       return
     }
+    // Read per request: the files are small, and an in-place edit then shows
+    // up on reload without restarting the host.
+    const body = readFileSync(path)
     res.writeHead(200, {
       ...headers,
       'content-length': String(body.byteLength),
@@ -465,273 +433,229 @@ export function registerRoutes(ctx, scope) {
     else createReadStream(path, { start, end }).pipe(res)
   }
 
+  /**
+   * Answer 405 for a request whose method the route does not take.
+   * @returns whether the request was turned away.
+   */
+  const methodRefused = (req, res, methods) => {
+    if (methods.includes(req.method)) return false
+    res.writeHead(405, { allow: methods.join(', ') })
+    res.end()
+    return true
+  }
+
+  /**
+   * The fence every route that reads the user's own data runs first: the
+   * host's own check where that service exists, the loopback stand-in
+   * otherwise (see refusalOf).
+   * @returns whether the request was turned away.
+   */
+  const fenceRefused = (req, res) => {
+    const refused = refusalOf(ctx, req)
+    if (refused === undefined) return false
+    sendJson(res, refused, { ok: false, error: refused === 401 ? 'unauthorized' : 'forbidden' })
+    return true
+  }
+
   scope.effect(() => {
     const disposers = []
-    const warn = (message) => ctx.logger?.warn?.(`dsh-claude-painting: ${message}`)
+    const report = (message, error) => ctx.logger?.warn?.(`dsh-claude-painting: ${message}: ${error?.message ?? error}`)
     const usage = createUsage(ctx)
     const hdsl = createHdslAccount(ctx)
     const sessionSearch = createSessionSearch(ctx)
 
-    try {
-      disposers.push(scope.webServer.register({
-        kind: 'prefix',
-        path: ROUTE_PREFIX,
-        handler: (req, res) => {
-          if (req.method !== 'GET' && req.method !== 'HEAD') {
-            res.writeHead(405, { allow: 'GET, HEAD' })
-            res.end()
-            return
-          }
-          /* v8 ignore next -- node:http always sets url on server requests. */
-          const sub = new URL(req.url ?? '/', 'http://x').pathname.slice(ROUTE_PREFIX.length)
-          if (sub === `/${COPY_FILE}`) {
-            sendFile(res, req.method, file, {
-              'content-type': 'application/json; charset=utf-8',
-              'cache-control': 'no-cache',
-            })
-            return
-          }
-          const font = sub.startsWith('/fonts/') ? FONT_FILES[sub.slice('/fonts/'.length)] : undefined
-          if (font !== undefined) {
-            // The filename changes with the package, so a long cache is safe
-            // and keeps the code face off the network after first paint.
-            sendFile(res, req.method, join(fontsDir, sub.slice('/fonts/'.length)), {
-              'content-type': font,
-              'cache-control': 'public, max-age=86400',
-            })
-            return
-          }
-          const sheet = sub.startsWith('/deepy/') ? sub.slice('/deepy/'.length) : ''
-          if (DEEPY_FILE.test(sheet)) {
-            sendFile(res, req.method, join(deepyDir, sheet), {
-              'content-type': 'image/png',
-              'cache-control': 'public, max-age=31536000, immutable',
-            })
-            return
-          }
-          if (sub.startsWith(ARTWORK_ROUTE)) {
-            sendArtwork(req, res, sub.slice(ARTWORK_ROUTE.length))
-            return
-          }
-          res.writeHead(404)
-          res.end()
-        },
-      }))
-    } catch (error) {
-      warn(`model copy route unavailable: ${error?.message ?? error}`)
+    /**
+     * Register one route. The web server refuses a path another plugin already
+     * holds by throwing; that refusal is reported and the other routes still
+     * register, because a throw here would fail this fiber and drop the client
+     * bundle — the whole skin — with it (docs/architecture.md D12).
+     */
+    const register = (label, route) => {
+      try {
+        disposers.push(scope.webServer.register(route))
+      } catch (error) {
+        report(`${label} route unavailable`, error)
+      }
     }
 
-    try {
-      // One-shot OS user resolution for the browser half; it caches the
-      // response and never polls. The exact route wins over the prefix above.
-      disposers.push(scope.webServer.register({
-        kind: 'exact',
-        path: USERNAME_PATH,
-        handler: (req, res) => {
-          if (req.method !== 'GET' && req.method !== 'HEAD') {
-            res.writeHead(405, { allow: 'GET, HEAD' })
+    register('model copy', {
+      kind: 'prefix',
+      path: ROUTE_PREFIX,
+      handler: (req, res) => {
+        if (methodRefused(req, res, ['GET', 'HEAD'])) return
+        /* v8 ignore next -- node:http always sets url on server requests. */
+        const sub = new URL(req.url ?? '/', 'http://x').pathname.slice(ROUTE_PREFIX.length)
+        if (sub === `/${COPY_FILE}`) {
+          sendFile(res, req.method, file, {
+            'content-type': 'application/json; charset=utf-8',
+            'cache-control': 'no-cache',
+          })
+          return
+        }
+        const font = sub.startsWith('/fonts/') ? FONT_FILES[sub.slice('/fonts/'.length)] : undefined
+        if (font !== undefined) {
+          // The filename changes with the package, so a long cache is safe
+          // and keeps the code face off the network after first paint.
+          sendFile(res, req.method, join(fontsDir, sub.slice('/fonts/'.length)), {
+            'content-type': font,
+            'cache-control': 'public, max-age=86400',
+          })
+          return
+        }
+        const sheet = sub.startsWith('/deepy/') ? sub.slice('/deepy/'.length) : ''
+        if (DEEPY_FILE.test(sheet)) {
+          sendFile(res, req.method, join(deepyDir, sheet), {
+            'content-type': 'image/png',
+            'cache-control': 'public, max-age=31536000, immutable',
+          })
+          return
+        }
+        if (sub.startsWith(ARTWORK_ROUTE)) {
+          sendArtwork(req, res, sub.slice(ARTWORK_ROUTE.length))
+          return
+        }
+        res.writeHead(404)
+        res.end()
+      },
+    })
+
+    register('username', {
+      kind: 'exact',
+      path: USERNAME_PATH,
+      handler: (req, res) => {
+        // One-shot OS user resolution for the browser half; it caches the
+        // response and never polls. The exact route wins over the prefix above.
+        if (methodRefused(req, res, ['GET', 'HEAD'])) return
+        if (fenceRefused(req, res)) return
+        const username = userInfo().username || ''
+        const body = Buffer.from(JSON.stringify({ ok: true, username }))
+        res.writeHead(200, {
+          'content-type': 'application/json; charset=utf-8',
+          'content-length': String(body.byteLength),
+          'cache-control': 'no-cache',
+        })
+        res.end(req.method === 'HEAD' ? undefined : body)
+      },
+    })
+
+    register('HDSL account', {
+      kind: 'exact',
+      path: HDSL_PATH,
+      handler: (req, res) => {
+        // Read-only and same-origin only; the player's avatar path is dropped
+        // here: the browser half needs a picture, not the home directory it
+        // lives in.
+        if (methodRefused(req, res, ['GET', 'HEAD'])) return
+        if (fenceRefused(req, res)) return
+        hdsl.read().then((profile) => {
+          const { skinFile, ...account } = profile
+          sendJson(res, 200, { ok: true, ...account })
+        }, (error) => {
+          sendJson(res, 500, { ok: false, error: String(error?.message ?? error) })
+        })
+      },
+    })
+
+    register('HDSL skin', {
+      kind: 'exact',
+      path: HDSL_SKIN_PATH,
+      handler: (req, res) => {
+        // The player's own avatar. The path comes from the environment and
+        // never from the request, so this route cannot be pointed anywhere; a
+        // missing file is a 404 and the browser half falls back to the brand
+        // mark.
+        if (methodRefused(req, res, ['GET', 'HEAD'])) return
+        if (fenceRefused(req, res)) return
+        // A failed read propagates to the web server, which logs it and answers.
+        return hdsl.read().then((profile) => {
+          // A file removed under the launcher is a 404 like no file at all.
+          if (typeof profile.skinFile !== 'string' || !existsSync(profile.skinFile)) {
+            res.writeHead(404, { 'cache-control': 'no-store' })
             res.end()
             return
           }
-          const refused = refusalOf(ctx, req)
-          if (refused !== undefined) {
-            sendJson(res, refused, { ok: false, error: refused === 401 ? 'unauthorized' : 'forbidden' })
-            return
-          }
-          let username = ''
-          try {
-            username = userInfo().username || ''
-          } catch { /* no OS user: the browser falls back to 'User' */ }
-          const body = Buffer.from(JSON.stringify({ ok: true, username }))
+          const body = readFileSync(profile.skinFile)
           res.writeHead(200, {
-            'content-type': 'application/json; charset=utf-8',
+            'content-type': 'image/png',
             'content-length': String(body.byteLength),
             'cache-control': 'no-cache',
           })
           res.end(req.method === 'HEAD' ? undefined : body)
-        },
-      }))
-    } catch (error) {
-      warn(`username route unavailable: ${error?.message ?? error}`)
-    }
+        })
+      },
+    })
 
-    try {
-      // The HDSL launcher's account contract. Read-only, same-origin only, and
-      // the player's avatar path is dropped here: the browser half needs a
-      // picture, not the home directory it lives in.
-      disposers.push(scope.webServer.register({
-        kind: 'exact',
-        path: HDSL_PATH,
-        handler: (req, res) => {
-          if (req.method !== 'GET' && req.method !== 'HEAD') {
-            res.writeHead(405, { allow: 'GET, HEAD' })
-            res.end()
-            return
-          }
-          const refused = refusalOf(ctx, req)
-          if (refused !== undefined) {
-            sendJson(res, refused, { ok: false, error: refused === 401 ? 'unauthorized' : 'forbidden' })
-            return
-          }
-          hdsl.read().then((profile) => {
-            const { skinFile, ...account } = profile
-            sendJson(res, 200, { ok: true, ...account })
-          }, (error) => {
-            sendJson(res, 500, { ok: false, error: String(error?.message ?? error) })
-          })
-        },
-      }))
-    } catch (error) {
-      warn(`HDSL account route unavailable: ${error?.message ?? error}`)
-    }
+    register('session delete', {
+      kind: 'exact',
+      path: SESSION_DELETE_PATH,
+      handler: (req, res) => {
+        // POST only: the browser half sends one id, and a GET must never
+        // reach the filesystem.
+        if (methodRefused(req, res, ['POST'])) return
+        // A fault anywhere in the deletion answers 500 with its message.
+        void deleteSession(ctx, req, res).catch((error) => {
+          if (res.headersSent) res.destroy()
+          else sendJson(res, 500, { ok: false, error: String(error?.message ?? error) })
+        })
+      },
+    })
 
-    try {
-      // The player's own avatar. The path comes from the environment and never
-      // from the request, so this route cannot be pointed anywhere; a missing
-      // file is a 404 and the browser half falls back to the brand mark.
-      disposers.push(scope.webServer.register({
-        kind: 'exact',
-        path: HDSL_SKIN_PATH,
-        handler: (req, res) => {
-          if (req.method !== 'GET' && req.method !== 'HEAD') {
-            res.writeHead(405, { allow: 'GET, HEAD' })
-            res.end()
-            return
-          }
-          const refused = refusalOf(ctx, req)
-          if (refused !== undefined) {
-            sendJson(res, refused, { ok: false, error: refused === 401 ? 'unauthorized' : 'forbidden' })
-            return
-          }
-          hdsl.read().then((profile) => {
-            let body = null
-            if (profile.skinFile !== null) {
-              try {
-                body = readFileSync(profile.skinFile)
-              } catch { /* the file was removed under the launcher */ }
-            }
-            if (body === null) {
-              res.writeHead(404, { 'cache-control': 'no-store' })
-              res.end()
-              return
-            }
-            res.writeHead(200, {
-              'content-type': 'image/png',
-              'content-length': String(body.byteLength),
-              'cache-control': 'no-cache',
-            })
-            res.end(req.method === 'HEAD' ? undefined : body)
-          }, () => {
-            res.writeHead(404, { 'cache-control': 'no-store' })
-            res.end()
-          })
-        },
-      }))
-    } catch (error) {
-      warn(`HDSL skin route unavailable: ${error?.message ?? error}`)
-    }
+    register('usage', {
+      kind: 'exact',
+      path: USAGE_PATH,
+      handler: (req, res) => {
+        // Read-only and same-origin only: the answer is the plugin's own
+        // aggregate over the user's session history, which is why it runs the
+        // same fence as the username route.
+        if (methodRefused(req, res, ['GET', 'HEAD'])) return
+        if (fenceRefused(req, res)) return
+        let snapshot = usage.snapshot()
+        const stale = snapshot.value === null
+          || snapshot.computing === true
+          || Date.now() - (snapshot.value?.computedAt ?? 0) > USAGE_TTL_MS
+        if (stale) {
+          void usage.refresh()
+          snapshot = usage.snapshot()
+        }
+        sendJson(res, 200, {
+          ok: true,
+          value: snapshot.value,
+          computing: snapshot.computing === true,
+          ...(snapshot.error === undefined ? {} : { error: snapshot.error }),
+        })
+      },
+    })
 
-    try {
-      // The archived row's delete button. POST only: the browser half sends
-      // one id, and a GET must never reach the filesystem.
-      disposers.push(scope.webServer.register({
-        kind: 'exact',
-        path: SESSION_DELETE_PATH,
-        handler: (req, res) => {
-          if (req.method !== 'POST') {
-            res.writeHead(405, { allow: 'POST' })
-            res.end()
-            return
-          }
-          void deleteSession(ctx, req, res).catch((error) => {
-            try {
-              sendJson(res, 500, { ok: false, error: String(error?.message ?? error) })
-            } catch { /* the response may already be gone */ }
-          })
-        },
-      }))
-    } catch (error) {
-      warn(`session delete route unavailable: ${error?.message ?? error}`)
-    }
-
-    try {
-      // The home dashboard's day buckets. Read-only and same-origin only: the
-      // answer is the plugin's own aggregate over the user's session history,
-      // which is why it runs the same fence as the username route.
-      disposers.push(scope.webServer.register({
-        kind: 'exact',
-        path: USAGE_PATH,
-        handler: (req, res) => {
-          if (req.method !== 'GET' && req.method !== 'HEAD') {
-            res.writeHead(405, { allow: 'GET, HEAD' })
-            res.end()
-            return
-          }
-          const refused = refusalOf(ctx, req)
-          if (refused !== undefined) {
-            sendJson(res, refused, { ok: false, error: refused === 401 ? 'unauthorized' : 'forbidden' })
-            return
-          }
-          let snapshot = usage.snapshot()
-          const stale = snapshot.value === null
-            || snapshot.computing === true
-            || Date.now() - (snapshot.value?.computedAt ?? 0) > USAGE_TTL_MS
-          if (stale) {
-            void usage.refresh()
-            snapshot = usage.snapshot()
-          }
-          sendJson(res, 200, {
-            ok: true,
-            value: snapshot.value,
-            computing: snapshot.computing === true,
-            ...(snapshot.error === undefined ? {} : { error: snapshot.error }),
-          })
-        },
-      }))
-    } catch (error) {
-      warn(`usage route unavailable: ${error?.message ?? error}`)
-    }
-
-    try {
-      // The search palette's message hits. Read-only, behind the same fence
-      // as the usage route: the answer quotes the user's own conversations.
-      disposers.push(scope.webServer.register({
-        kind: 'exact',
-        path: SESSION_SEARCH_PATH,
-        handler: (req, res) => {
-          if (req.method !== 'GET') {
-            res.writeHead(405, { allow: 'GET' })
-            res.end()
-            return
-          }
-          const refused = refusalOf(ctx, req)
-          if (refused !== undefined) {
-            sendJson(res, refused, { ok: false, error: refused === 401 ? 'unauthorized' : 'forbidden' })
-            return
-          }
-          const query = (new URL(req.url ?? '/', 'http://local').searchParams.get('q') ?? '').trim().slice(0, QUERY_MAX)
-          const answer = query === ''
-            ? sessionSearch.warm().then(() => ({ sessions: [] }))
-            : sessionSearch.search(query)
-          void answer.then((value) => {
-            sendJson(res, 200, { ok: true, ...value })
-          }, (error) => {
-            sendJson(res, 500, { ok: false, error: String(error?.message ?? error) })
-          })
-        },
-      }))
-    } catch (error) {
-      warn(`session search route unavailable: ${error?.message ?? error}`)
-    }
+    register('session search', {
+      kind: 'exact',
+      path: SESSION_SEARCH_PATH,
+      handler: (req, res) => {
+        // Read-only, behind the same fence as the usage route: the answer
+        // quotes the user's own conversations.
+        if (methodRefused(req, res, ['GET'])) return
+        if (fenceRefused(req, res)) return
+        const query = (new URL(req.url ?? '/', 'http://local').searchParams.get('q') ?? '').trim().slice(0, QUERY_MAX)
+        const answer = query === ''
+          ? sessionSearch.warm().then(() => ({ sessions: [] }))
+          : sessionSearch.search(query)
+        void answer.then((value) => {
+          sendJson(res, 200, { ok: true, ...value })
+        }, (error) => {
+          sendJson(res, 500, { ok: false, error: String(error?.message ?? error) })
+        })
+      },
+    })
 
     return () => {
-      try {
-        usage.dispose()
-      } catch { /* the service may already be gone */ }
+      usage.dispose()
+      // One route's disposer failing must not keep the others registered
+      // (docs/architecture.md D12); the failure is reported.
       for (const dispose of disposers) {
         try {
           dispose()
-        } catch { /* the route may already be gone */ }
+        } catch (error) {
+          report('route disposal failed', error)
+        }
       }
     }
   }, 'dsh-claude-painting: host routes')

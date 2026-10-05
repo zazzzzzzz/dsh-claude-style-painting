@@ -234,8 +234,6 @@
 
       let permDocPointerListener = null
       let permResizeListener = null
-      /** The session-stats card (src/features/permissions/session-stats.js). */
-      const stats = createSessionStats(ctx)
 
       /** Every dismiss route (item pick, outside pointer, resize/scroll, Escape) closes the menu through this one path. */
       function closePermMenu() {
@@ -253,31 +251,13 @@
        * the rows stay consistent with each other.
        */
       function buildPermRow(preset) {
-        const item = document.createElement('button')
-        item.type = 'button'
-        item.className = 'dsh-claude-popover-item'
-        item.setAttribute('role', 'menuitem')
+        const built = buildPopoverItem({ role: 'menuitem', lines: 2, check: true })
+        const item = built.row
         item.setAttribute('data-preset', preset)
-
-        const col = document.createElement('div')
-        col.style.cssText = 'display:flex; flex-direction:column; gap:2px; flex:1; text-align:left; min-width:0;'
-
-        const itemTitle = document.createElement('span')
-        itemTitle.style.cssText = 'font-weight:500; font-size:13px; line-height:16px;'
-        itemTitle.textContent = presetLabel(preset)
-
-        const itemDesc = document.createElement('span')
-        itemDesc.style.cssText = 'font-size:11px; line-height:14px; color:var(--dsw-alias-label-tertiary);'
-        itemDesc.textContent = presetDesc(preset)
-
-        col.appendChild(itemTitle)
-        col.appendChild(itemDesc)
-        item.appendChild(col)
-
-        const check = buildElement('span', 'dsh-claude-perm-check')
-        check.style.cssText = 'font-size:12px; color:var(--dsw-alias-brand-primary, #d97757); margin-left:8px; display:none;'
-        check.textContent = '✓'
-        item.appendChild(check)
+        built.text.textContent = presetLabel(preset)
+        built.desc.textContent = presetDesc(preset)
+        built.check.textContent = '✓'
+        built.check.hidden = true
 
         item.addEventListener('click', e => {
           e.stopPropagation()
@@ -337,9 +317,7 @@
         function openPerm() {
           if (permHoverIntent) permHoverIntent.cancel()
           closeOtherPopovers('permission')
-          const rect = btn.getBoundingClientRect()
-          popover.style.left = `${Math.max(8, rect.left)}px`
-          popover.style.bottom = `${Math.max(8, window.innerHeight - rect.top + 6)}px`
+          positionAnchoredPopover(btn, popover, { side: 'above-left', gap: 6, important: true })
           btn.setAttribute('data-open', 'true')
           btn.setAttribute('aria-expanded', 'true')
           setMenuPopoverOpen(popover, true)
@@ -420,15 +398,9 @@
         for (let j = 0; j < items.length; j++) {
           const it = items[j]
           const isCurrent = it.getAttribute('data-preset') === preset
-          const check = it.querySelector('.dsh-claude-perm-check')
-          if (check) {
-            check.style.display = isCurrent ? 'inline' : 'none'
-          }
-          if (isCurrent) {
-            it.setAttribute('data-active', '')
-          } else {
-            it.removeAttribute('data-active')
-          }
+          const check = it.querySelector('.dsh-claude-popover-check')
+          if (check) check.hidden = !isCurrent
+          it.toggleAttribute('data-active', isCurrent)
         }
       }
 
@@ -452,7 +424,7 @@
         const session = currentSession(ctx)
         if (session === null) return
         const settled = session.command(`/permission ${preset}`)
-        if (settled === void 0 || typeof settled.then !== 'function') return
+        if (settled === undefined || typeof settled.then !== 'function') return
         settled.then(result => {
           if (result === null || typeof result !== 'object' || result.ok !== true) {
             submitError = new Error(`permission: the /permission ${preset} command was refused`)
@@ -562,13 +534,9 @@
           for (let j = 0; j < segments.children.length; j++) {
             const item = segments.children[j]
             if (item.disabled !== coldStart) item.disabled = coldStart
-            if (item.getAttribute('data-preset') === preset) {
-              item.setAttribute('data-active', '')
-              item.setAttribute('aria-checked', 'true')
-            } else {
-              item.removeAttribute('data-active')
-              item.setAttribute('aria-checked', 'false')
-            }
+            const isCurrent = item.getAttribute('data-preset') === preset
+            item.toggleAttribute('data-active', isCurrent)
+            setAttributeIfChanged(item, 'aria-checked', String(isCurrent))
           }
           segmentPill.sync(segments)
         } else {
@@ -609,35 +577,24 @@
         sync() {
           if (autoPresetError !== null) throw autoPresetError
           if (submitError !== null) throw submitError
-          stats.sync()
           syncSegments()
         },
         /**
-         * A viewport move under the context panel: the panel is the host's, and
-         * the stats card only re-takes its own reading of where the panel's
-         * right edge belongs (session-stats.js).
+         * Esc and composer focus close the menu. There is deliberately no
+         * 'outside' route — the menu runs its own document pointerdown
+         * listener (see buildPermTriggerAndPopover).
          */
-        reposition(reason) {
-          stats.reposition(reason)
-        },
-        /**
-         * Esc closes the menu; composer focus additionally closes the stats
-         * card. There is deliberately no 'outside' route — the menu runs its
-         * own document pointerdown listener (see buildPermTriggerAndPopover).
-         */
-        close(reason) {
+        close() {
           closePermMenu()
-          if (reason === 'composer') stats.close()
         }
       }
 
-      // The composer restyle hides the host's access button and statistics
-      // dialogs only while this says their replacement is installed.
+      // The composer restyle hides the host's access button only while this
+      // says its replacement is installed.
       document.body.setAttribute(PERMISSIONS_ATTR, '')
       startAutoPresetProbe()
 
       return () => {
-        stats.teardown()
         unregisterPopover('permission')
         if (permHoverIntent) permHoverIntent.cancel()
         dropAutoPresetRead()

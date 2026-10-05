@@ -25,6 +25,27 @@
     consoleError.apply(console, arguments)
   }
 
+  // The host-palette case: the host's own palette and frame, and a theme plugin
+  // that rewrites the host's tokens for a wallpaper the way
+  // dsh-wallpaper-engine does (canvas and sidebar cleared, overlays and the
+  // input turned to glass). Both load before the skin, as the host's do.
+  if (CASE === 'host-palette') {
+    var hostSheet = document.createElement('style')
+    hostSheet.textContent = [
+      'body { --dsw-alias-bg-base: rgb(250, 250, 252); --dsw-alias-bg-overlay: rgb(240, 241, 250); --dsw-alias-bg-layer-2: rgb(245, 246, 250);',
+      '  --dsw-specific-sidebar-fill: rgb(244, 245, 250); --dsw-specific-input-major: rgb(251, 252, 253); --dsw-specific-selector: rgb(230, 231, 240);',
+      '  --dsw-alias-interactive-bg-hover: rgba(10, 20, 30, 0.08); --dsw-alias-label-primary: rgb(17, 18, 19); --dsw-alias-label-secondary: rgb(80, 81, 90);',
+      '  --dsw-alias-border-l1: rgb(220, 221, 230); --dsw-alias-link: rgb(30, 90, 200); --dsw-alias-markdown-inline-code: rgb(235, 236, 245);',
+      '  --dsw-font-family: "Host Sans", sans-serif; --ds-font-family-code: "Host Mono", monospace; }',
+      'body[data-ds-dark-theme] { --dsw-alias-bg-base: rgb(20, 22, 30); --dsw-alias-bg-overlay: rgb(36, 38, 48); --dsw-specific-sidebar-fill: rgb(24, 26, 34);',
+      '  --dsw-specific-input-major: rgb(14, 15, 20); --dsw-alias-interactive-bg-hover: rgba(240, 240, 255, 0.08); --dsw-alias-label-primary: rgb(236, 238, 245); }',
+      '[data-pane="sidebar"] { background: var(--dsw-specific-sidebar-fill); }',
+      'body[data-we-wallpaper] { --dsw-alias-bg-base: transparent; --dsw-specific-sidebar-fill: transparent;',
+      '  --dsw-alias-bg-overlay: rgba(255, 255, 255, 0.6); --dsw-specific-input-major: rgba(255, 255, 255, 0.5); }',
+    ].join('\n')
+    document.head.appendChild(hostSheet)
+  }
+
   var menu = null
   var menuViewport = null
   var menuSizer = null
@@ -41,6 +62,8 @@
     if (menu && menu.parentElement) menu.parentElement.removeChild(menu)
     menu = null
     menuViewport = null
+    // The host reports the menu state on its trigger (ui-primitives' Menu).
+    if (accountTrigger) accountTrigger.setAttribute('aria-expanded', 'false')
   }
   function openHostSettingsDialog() {
     var area = document.querySelector('[class*="settingsArea"]')
@@ -63,6 +86,7 @@
   var accountTrigger = document.getElementById('host-account')
   if (accountTrigger) accountTrigger.addEventListener('click', function () {
     if (menu) { closeHostMenu(); return }
+    accountTrigger.setAttribute('aria-expanded', 'true')
     // The host's real Menu DOM (ui-primitives/Menu.tsx): a role=menu portal to
     // body, a role=presentation viewport, and itemWrap > button[role=menuitem].
     // Picking an item selects it and the menu closes itself (onSelect), so the
@@ -70,7 +94,7 @@
     // LogoutIcon.tsx's geometry: a 16px relative box holding a 13.664x13.571 svg
     // at (1.168, 1.214) absolute.
     hostRowsHtml = CASE === 'desktop'
-      ? '<div class="itemWrap"><button type="button" role="menuitem">' +
+      ? '<div class="itemWrap"><button type="button" role="menuitem" aria-keyshortcuts="Control+,">' +
           '<svg viewBox="0 0 16 16" width="16" height="16"></svg>Settings</button></div>' +
         '<div class="itemWrap"><button type="button" role="menuitem">' +
           '<svg viewBox="0 0 16 16" width="16" height="16"></svg>Feedback</button></div>' +
@@ -207,6 +231,12 @@
   var username = CASE === 'markup' ? MARKUP : CASE === 'desktop' || launcherCase ? '' : 'Tester'
   var formListeners = []
   var formValue = { username: username, collapseFooter: true, homeLayout: CASE === 'studio' ? 'studio' : 'classic', brand: CASE === 'deepy' ? 'off' : undefined }
+  // The crab-states case picks the crab, whose states it walks through.
+  if (CASE === 'crab-states') formValue.mascot = 'crab'
+  // The switches-off case starts with every feature switch off.
+  if (CASE === 'switches-off') {
+    Object.assign(formValue, { permissionsControl: false, workspaceView: false, sidebarSearch: false, turnStatus: false, viewTabs: false, chatAnimations: false })
+  }
   var form = {
     // The deepy case stores the DeepSeek brand under the value earlier builds
     // wrote for it ("off"), which has to read as the DeepSeek brand.
@@ -383,12 +413,14 @@
   // session instead: the control reads the running preset from its projection
   // and switches through the host permission command; the case asserts both.
   var permissionCommands = []
+  /** The cases that carry the turn-status chat fixture: the turn-status case, and the two feature-switch cases. */
+  var turnFixtureCase = CASE === 'turn-status' || CASE === 'switches' || CASE === 'switches-off'
   // The turn-status case: one bound session whose chat snapshot (ui-chat's
   // `chat` target of uiConversation) has a failed first turn that ran 12s and
   // reported 300 output tokens, then a running turn — a settled first step
   // that reported its usage, and a second step streaming its reasoning — and
   // the host's chat wording (English).
-  var turnStatusChat = CASE === 'turn-status' ? (function () {
+  var turnStatusChat = turnFixtureCase ? (function () {
     function stepData(value) { return { get: function (kind) { return kind === 'assistant-step' ? value : undefined } } }
     var failed = {
       turn: 1,
@@ -436,7 +468,7 @@
   }
   /** The two cases that drive the skin's session-statistics block (detailed and compact rows). */
   var statsFixtureCase = CASE === 'context-stats' || CASE === 'stats-compact'
-  var localeFixture = CASE === 'turn-status' || statsFixtureCase ? {
+  var localeFixture = turnFixtureCase || statsFixtureCase ? {
     getSnapshot: function () { return { active: 'en' } },
     subscribe: function () { return function () {} },
     bind: function () {
@@ -455,11 +487,11 @@
     },
   } : undefined
   var turnStatusLocale = localeFixture
-  // The deepy case: the session the DeepSeek brand's whale follows, as the
+  // The deepy and crab-states cases: the session the mascot follows, as the
   // host's services describe it — the session status (uiSession), the session
   // list with its subagent catalog, the chat snapshot's open turn and the
   // session's event feed. The probe drives all four through __deepy.
-  var deepy = CASE === 'deepy' ? (function () {
+  var deepy = CASE === 'deepy' || CASE === 'crab-states' ? (function () {
     var statusListeners = []
     var feedListeners = []
     var status = new Map()
@@ -579,7 +611,7 @@
     }
     return {
       sessions: {
-        list: { getSnapshot: function () { return { current: 'smoke-stats' } } },
+        list: { getSnapshot: function () { return { current: 'smoke-stats', ids: [], byId: {}, projectionsBySession: {} } } },
         binding: function (id) {
           if (id !== 'smoke-stats') return undefined
           return { sessionId: id, session: { projections: { faceOf: faceOf } } }
@@ -587,13 +619,25 @@
       },
     }
   })() : undefined
-  var sessions = CASE === 'deepy' ? deepy.sessions : statsFixtureCase ? statsCase.sessions : CASE === 'turn-status' ? {
-    list: { getSnapshot: function () { return { current: undefined } } },
+  // The switch cases also need the sidebar workspace view, which follows the
+  // host's two client lists: an empty archive set, ready.
+  var switchCase = CASE === 'switches' || CASE === 'switches-off'
+  var workspacesService = switchCase ? {
+    list: {
+      getSnapshot: function () { return { phase: 'ready', archivedSessionIds: [] } },
+      subscribe: function () { return function () {} },
+    },
+  } : undefined
+  var sessions = deepy !== undefined ? deepy.sessions : statsFixtureCase ? statsCase.sessions : turnFixtureCase ? {
+    list: {
+      getSnapshot: function () { return { current: undefined, phase: 'ready', ids: [], byId: {}, projectionsBySession: {} } },
+      subscribe: function () { return function () {} },
+    },
     binding: function (id) { return id === 'smoke-session' ? {} : undefined },
   } : CASE === 'sync-fault'
     ? { list: { getSnapshot: function () { throw new Error('session list unavailable') } }, binding: function () { return null } }
     : (permissionFixture !== undefined && permissionFixture.current !== null ? {
-        list: { getSnapshot: function () { return { current: 'smoke-session' } } },
+        list: { getSnapshot: function () { return { current: 'smoke-session', ids: [], byId: {}, projectionsBySession: {} } } },
         binding: function () {
           return {
             session: {
@@ -636,16 +680,48 @@
   // dock list seat (a list seat, so it carries an id), and the registration is
   // the whole wiring — the seat's own rendering is the host's. The component is
   // kept so the probe can render it the way the seat would.
-  var slotRegistry = CASE === 'studio' ? {
+  // The settings case declares the settings dialog's section slot and the
+  // plugin page's config slot instead, so the probe can render the page. The
+  // peer case declares those two plus the tool seat, so the probe can see both
+  // the page it greys out and the seat keys the file rows must leave alone.
+  var slotRegistry = CASE === 'studio' || CASE === 'settings' || CASE === 'chat-files' || CASE === 'peer-chat-ux' ? {
     inject: function (key, callback) {
-      return key === 'conversation.input.dock' ? callback() : function () {}
+      var declared = CASE === 'studio'
+        ? key === 'conversation.input.dock'
+        : CASE === 'chat-files'
+          ? key === 'tool.call.toolview'
+          : CASE === 'peer-chat-ux'
+            ? key === 'tool.call.toolview' || key === 'settings.section' || key === 'plugins.bundle.config'
+            : key === 'settings.section' || key === 'plugins.bundle.config'
+      return declared ? callback() : function () {}
     },
     register: function (spec, component) {
       window.__slots = window.__slots || []
-      window.__slots.push({ key: spec.name, id: spec.id, order: spec.order, component: typeof component })
+      var entry = { key: spec.name, id: spec.id, seat: spec.key, priority: spec.priority, order: spec.order, component: typeof component }
+      window.__slots.push(entry)
       window.__slotComponents = window.__slotComponents || {}
-      window.__slotComponents[spec.id] = component
-      return function () {}
+      window.__slotComponents[spec.id === undefined ? spec.key : spec.id] = component
+      // The host hands back a disposer and the skin calls it when a feature
+      // comes down: the list is live, so a case can tell "registered" from
+      // "handed back".
+      var live = true
+      return function () {
+        if (!live) return
+        live = false
+        var at = window.__slots.indexOf(entry)
+        if (at >= 0) window.__slots.splice(at, 1)
+      }
+    },
+    // The host lists a slot's entries in render order (ui-slots' registry),
+    // each with the options it was registered under.
+    entries: function (key) {
+      var out = []
+      var all = window.__slots || []
+      for (var i = 0; i < all.length; i++) {
+        if (all[i].key !== key) continue
+        out.push({ options: { id: all[i].id, order: all[i].order } })
+      }
+      return out
     },
   } : undefined
   window.__permissionCommands = permissionCommands
@@ -657,6 +733,7 @@
       if (name === 'remote.permissionPresets') return permissionPresets
       if (name === 'remote') return CASE === 'desktop' ? remote : undefined
       if (name === 'sessions') return sessions
+      if (name === 'workspaces') return workspacesService
       if (name === 'uiConversation') return deepy !== undefined ? deepy.conversation : turnStatusChat
       if (name === 'uiSession') return deepy !== undefined ? deepy.uiSession : undefined
       if (name === 'locale') return turnStatusLocale
@@ -670,7 +747,7 @@
   // same way. The other cases keep no inject, which is what makes them read
   // synchronously at install (the install-fault case depends on that read
   // throwing).
-  if (CASE === 'desktop' || CASE === 'studio') {
+  if (CASE === 'desktop' || CASE === 'studio' || CASE === 'settings' || CASE === 'chat-files' || CASE === 'peer-chat-ux') {
     window.__ctx.inject = function (deps, cb) {
       var disposers = []
       cb({
@@ -740,7 +817,7 @@
   // the host portals it to <body>. Its rows are a <dl> like the stats dialogs',
   // so the skin tells the three apart by their markers (the stats dialogs carry
   // data-session-stats-*, this one carries neither) — see
-  // features/permissions/session-stats.js contextPanel().
+  // features/context-stats/session-stats.js contextPanel().
   var meterTrigger = document.getElementById('context-meter')
   var contextPanel = null
   if (meterTrigger !== null) {
@@ -780,6 +857,8 @@
       return [states !== null && Object.prototype.hasOwnProperty.call(states, v) ? states[v] : v, function () {}]
     },
     useEffect: function () {},
+    useMemo: function (fn) { return fn() },
+    useCallback: function (fn) { return fn },
     useRef: function (v) { return { current: v } },
     useLayoutEffect: function () {},
   }
@@ -794,6 +873,25 @@
     IconUnarchiveOutlineRegular: primitive('IconUnarchiveOutlineRegular'),
     IconTrashOutlineRegular: primitive('IconTrashOutlineRegular'),
     IconWarningOutlineRegular: primitive('IconWarningOutlineRegular'),
+    // The file-change row's own share (features/chat-files/): the disclosure row,
+    // the shimmer, the diff card and its two icons are the host's primitives, and
+    // the totals helper counts one added and one removed line per hunk.
+    DisclosureRow: primitive('DisclosureRow'),
+    TextShimmer: primitive('TextShimmer'),
+    DiffBlock: primitive('DiffBlock'),
+    IconEditOutlineRegular: primitive('IconEditOutlineRegular'),
+    IconInspectOutlineRegular: primitive('IconInspectOutlineRegular'),
+    diffTotals: function (hunks) {
+      var added = 0
+      var removed = 0
+      for (var i = 0; i < hunks.length; i += 1) {
+        var before = hunks[i].oldText === null ? '' : String(hunks[i].oldText)
+        var after = String(hunks[i].newText)
+        if (after !== '') added += after.split('\n').length
+        if (before !== '') removed += before.split('\n').length
+      }
+      return { added: added, removed: removed }
+    },
   }
   // The host's react-dom/client. Each root records the element it was created
   // on, how many times it was asked to render and whether it was unmounted, so

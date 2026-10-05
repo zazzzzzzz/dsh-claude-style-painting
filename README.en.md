@@ -33,7 +33,7 @@ The settings page's Brand mark row switches between the Claude and DeepSeek pale
   </tr>
 </table>
 
-> Light mode pairs an ivory canvas `#FCFCFB` with a pale sidebar `#FBFBF9`; dark mode uses warm black `#141413`. Ember orange `#D97757` is the single action accent across both canvases, and Claude Code's pixel crab stands on the Studio home page's composer.
+> Light mode pairs an ivory canvas `#FCFCFB` with a pale sidebar `#FBFBF9`; dark mode uses warm black `#141413`. Ember orange `#D97757` is the single action accent across both canvases, and Claude Code's pixel crab stands on the composer on the home page and in conversations alike.
 
 ### DeepSeek
 
@@ -73,7 +73,41 @@ The settings page's Brand mark row switches between the Claude and DeepSeek pale
 >
 > The settings page's Artwork row turns the layer off entirely, and the canvas returns to its flat colour. Both the character table and the files live in the package's `assets/` directory: `assets/themes.json` names each character's files, its aspect ratio and its three line colours, and `assets/<character id>/` holds the files themselves. Adding a character means dropping in the files and adding one table entry — no code change and no rebuild.
 >
+> The layer's canvas takeover and the character's own palette follow the settings page's Colours choice: under Follow the host the canvas belongs to the host, the character no longer repaints the page, and this layer no longer clears the host's own surfaces.
+>
 > A motion character (a WebM with an alpha channel) plays through a `<video>` in the same box, with its still frame as the poster and the fallback; choosing Reduced under Animation holds it on that still frame.
+
+## Settings
+
+The settings page appears both in the settings dialog (the "Claude Style" tab) and on the plugin page, in five tabs:
+
+| Tab | Settings |
+|---|---|
+| General | Username, Animation, Open popovers on hover, Account-hold easter egg language |
+| Appearance | Brand mark, Colours, Typefaces, Mascot, Where it appears |
+| Composer | Composer restyle, Home layout, Redraw the model picker (with Quick providers under it), Redraw the permission control |
+| Sidebar | Collapse the sidebar settings area, Sidebar search, In progress / Archived view |
+| Conversation | Turn status line, Chat-area animations, Composer caret motion, Chat / Trajectory tabs |
+
+Every feature that takes over part of the host's interface has its own switch; turning it off brings the host's original back at once, without a reload. The conversation area's animations — the follow, the automatic folding with its rolling door, the text fade, the file change rows and the send flight — share one Chat-area animations switch; the caret keeps its own three-way choice.
+
+**Alongside other theme plugins**: with Colours and Typefaces set to Follow the host, the skin no longer rewrites the host's colours and fonts and keeps only its layout and controls; the colours are left to DSH itself, or to another theme plugin enabled at the same time. With [dsh-wallpaper-engine](https://github.com/elysia395/dsh-wallpaper-engine), for example, the wallpaper shows through the sidebar and the conversation, and the skin's own popovers take that plugin's glass, translucent and blurring the picture behind them. **Alongside [dsh-chat-ux](https://github.com/alm-allen/dsh-chat-ux)**: that plugin implements the same chat-area interactions (the rolling door, automatic folding, the token fade, file change rows, the send flight, the drawn caret), and two copies of them intercept each other's clicks and press the same controls. So this skin stands down when it sees that plugin: the Chat-area animations and Composer caret motion rows on the settings page's Conversation tab have their controls disabled while each still shows the value you set, with a line underneath in the accent colour reading "Managed by dsh-chat-ux". Your settings are not rewritten, and they take effect as they are once dsh-chat-ux is removed.
+
+**Chat-area follow**: at the structural moments — a thinking row folding, a tool call row arriving — a reader sitting at the bottom is handed back to the host's own follow, instead of being left tens of pixels short by the burst of content; a process group capped in the Standard and Compact tiers (thinking and tool output kept in one scrolling body) is caught up the same way. Catching up runs on a curve: a trickle of characters settles softly and a burst glides at one steady speed before landing. While content streams, the main scroller's own follow is walked along that curve too rather than written to the end in a single frame — with a fast stream the newest lines trail just below the fold and slide into place once it stops. A message you send does not go through it: the host's scroll to bring it into view lands at once. Once the reader scrolls away from the bottom himself, the plugin stays out of it until he returns.
+
+**Automatic folding**: a thinking row opens while the model reasons and folds back when it stops; a running process group opens and folds back once that piece of work ends. A row or group the reader pressed himself keeps what he chose for that phase.
+
+**Send flight**: on submission the composer card lifts as it is and narrows into the bubble as it travels, its words re-flowing into the shape, landing on the message row.
+
+**File change rows**: a write or edit dispatched from inside a run_code program carries the `+n -m` tail and an expandable diff card, and its path opens the file; a failed or interrupted row keeps its verdict.
+
+**New text fades in**: characters arriving in a streaming answer start faint and settle over about 0.12 s, staggered slightly by arrival order; a block arriving whole, a burst of thousands of characters and text that just reflowed from a fold stay solid.
+
+**A rolling door for folds**: opening or closing a row (a tool card, a thinking row, a command card) or a process group moves the height frame by frame, really pushing the content below away or pulling it back. The door only rolls the stretch the reader can see, so any length moves at the same speed, and a body holding several cards rolls as one door. It rides the Chat-area animations switch, together with the entrance fade of an expanded body.
+
+**Composer caret motion**: the composer's text caret is drawn by the plugin and glides when it moves; a question card's answer box and a queued message's inline editor are covered as well. The Conversation tab offers Every move (the default), Explicit moves and Off.
+
+**Mascot**: a pixel companion stands on the composer's top edge and changes its animation with what the agent is doing (thinking, writing and calling tools, several sessions at work, subagents, waiting on you, compacting the context, finished, failed, asleep). Follow the brand shows the pixel crab under Claude and Deepy the whale under DeepSeek; either can be picked for good, or none. Where it appears keeps it to the new-conversation page, or puts it in conversations as well.
 
 ## Fonts
 
@@ -84,6 +118,10 @@ The settings page's Brand mark row switches between the Claude and DeepSeek pale
 | Anthropic Sans Web Text | Interface / UI | [`fonts/AnthropicSansWebText.ttf`](https://github.com/Nwflower/dsh-claude-style/raw/main/fonts/AnthropicSansWebText.ttf) |
 | Anthropic Serif Web Text | Conversation body / Markdown | [`fonts/AnthropicSerifWebText.ttf`](https://github.com/Nwflower/dsh-claude-style/raw/main/fonts/AnthropicSerifWebText.ttf) |
 | JetBrains Mono Variable | Code / code blocks | [`fonts/JetBrainsMonoVariable.ttf`](https://github.com/Nwflower/dsh-claude-style/raw/main/fonts/JetBrainsMonoVariable.ttf), [`fonts/JetBrainsMonoItalicVariable.ttf`](https://github.com/Nwflower/dsh-claude-style/raw/main/fonts/JetBrainsMonoItalicVariable.ttf) |
+| Inter | Interface when Anthropic Sans is absent | [`fonts/InterVariable.woff2`](https://github.com/Nwflower/dsh-claude-style/raw/main/fonts/InterVariable.woff2) |
+| Noto Serif | Conversation body when Anthropic Serif is absent | [`fonts/NotoSerifVariable.woff2`](https://github.com/Nwflower/dsh-claude-style/raw/main/fonts/NotoSerifVariable.woff2) |
+
+JetBrains Mono, Inter and Noto Serif are licensed under the SIL Open Font License 1.1 and ship with the npm package; nothing to set up. Inter and Noto Serif nearly match the two Anthropic fonts in letter height and width, so without the Anthropic fonts they stand in and the interface and conversation text keep their layout. Both carry only the Latin characters the Anthropic fonts cover; Chinese text keeps using the system's Chinese fonts.
 
 To enable the Anthropic fonts, choose one of the following:
 
@@ -124,6 +162,8 @@ Keep only one theme enabled at a time. dsh ≥ 0.1.7 is required, and a restart 
 ## Acknowledgements
 
 The animation frames of Deepy the pixel whale come from the Deepy whale theme pack drawn by calmly-eating-bugs ([@wp3171216237](https://github.com/wp3171216237)), and ship with the plugin by the author's permission. Many thanks to the author! GIFs of all 20 animations, contributed by the author, are in [showcase/gifs/](showcase/gifs/).
+
+The pixel crab (Clawd) is a character of Anthropic, and all rights in it remain with Anthropic. Its laptop animation is taken from Claude Code; the animations of its other states are drawn by this project after that character. The crab's frames are not covered by the MIT license (see [LICENSE](LICENSE)). This plugin is an unofficial fan work, not affiliated with or endorsed by Anthropic.
 
 ## Related projects
 

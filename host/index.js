@@ -17,7 +17,8 @@
  *      are NOT in the npm package (they remain Anthropic's property), but a
  *      user who drops them into this package's `fonts/` directory gets the
  *      same zero-install treatment; a missing file simply 404s and the stack
- *      falls back to a system-installed copy.
+ *      falls back to a system-installed copy, then to the look-alike faces
+ *      this package does ship (Inter, Noto Serif — SIL OFL).
  *   3. Resolve the OS user once for the browser half. The username route answers
  *      a single GET and the browser caches it; it runs the host's own request
  *      fence first — see refusalOf() in routes.js.
@@ -49,18 +50,11 @@ export function apply(ctx) {
   // Always register through inject, never on the bare ctx. `ctx.get()` reads a
   // service leniently (no inject declaration needed), but the PROPERTY access
   // inside registerRoutes (`scope.webServer`) is gated by the fiber's inject
-  // declaration — so a host half that re-applies while the web server is
-  // ALREADY running (a generation relink after a client-bundle rebuild) used to
-  // take the `else registerRoutes(ctx)` branch, every registration threw
-  // "cannot get property "webServer" without inject", and all three asset
-  // routes stayed down for that generation. The browser half then fetched the
-  // copy document in vain — and since loadModelCopy() is one-shot per client
-  // generation, the picker rendered without the document (English labels, no
-  // vendor lockups, catalog descriptions) until the next HMR. inject() waits
-  // for the service and hands registerRoutes a scope that HAS the declaration,
-  // so both a boot-time apply (web server not up yet) and a hot relink land on
-  // the working path. A host without a web server simply waits forever here,
-  // which keeps the defensive contract: the skin still activates.
+  // declaration, and a host half re-applies while the web server is already
+  // running (a generation relink after a client-bundle rebuild). inject()
+  // waits for the service and hands registerRoutes a scope that HAS the
+  // declaration, so both a boot-time apply and a hot relink register. A host
+  // without a web server simply waits here, and the skin still activates.
   if (typeof ctx.inject === 'function') ctx.inject(['webServer'], (scope) => { registerRoutes(ctx, scope) })
   else registerRoutes(ctx, ctx)
 

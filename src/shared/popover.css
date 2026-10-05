@@ -37,6 +37,13 @@ body[data-dsh-claude-style][data-ds-dark-theme] .dsh-claude-popover-card {
   border-color: var(--dsw-alias-border-l2) !important;
   box-shadow: 0 8px 30px rgba(0, 0, 0, 0.5), 0 2px 8px rgba(0, 0, 0, 0.3) !important;
 }
+/* Under the host's colours the card's fill is the host's overlay layer, which
+   a theme plugin may turn translucent (a wallpaper's glass): the card blurs
+   what lies behind it, so its rows stay readable over a busy picture. */
+body[data-dsh-claude-style]%%PALETTE_HOST%% .dsh-claude-popover-card {
+  -webkit-backdrop-filter: blur(16px) saturate(1.4) !important;
+  backdrop-filter: blur(16px) saturate(1.4) !important;
+}
 /* A card's list: rows stacked with a hairline of air. */
 body[data-dsh-claude-style] .dsh-claude-popover-body {
   display: flex !important;
@@ -98,12 +105,37 @@ body[data-dsh-claude-style] .dsh-claude-popover-item-text {
   white-space: nowrap !important;
   text-align: left !important;
 }
-/* The current choice's check, in the accent. */
+/* A two-line row: the title over a quieter second line, the pair sharing the
+   slack the one-line text block would take. */
+body[data-dsh-claude-style] .dsh-claude-popover-item-col {
+  display: flex !important;
+  flex-direction: column !important;
+  gap: 2px !important;
+  flex: 1 !important;
+  min-width: 0 !important;
+  text-align: left !important;
+}
+body[data-dsh-claude-style] .dsh-claude-popover-item-col .dsh-claude-popover-item-text {
+  font-weight: 500 !important;
+  line-height: 16px !important;
+}
+body[data-dsh-claude-style] .dsh-claude-popover-item-desc {
+  font-size: 11px !important;
+  line-height: 14px !important;
+  color: var(--dsw-alias-label-tertiary, #8f8d84) !important;
+  overflow: hidden !important;
+  text-overflow: ellipsis !important;
+}
+/* The current choice's check, in the accent. A row that carries the mark for
+   every choice keeps it out of the flow until its `hidden` comes off. */
 body[data-dsh-claude-style] .dsh-claude-popover-check {
   flex: none !important;
   display: inline-flex !important;
   align-items: center !important;
   color: var(--dsw-alias-brand-primary, #d97757) !important;
+}
+body[data-dsh-claude-style] .dsh-claude-popover-check[hidden] {
+  display: none !important;
 }
 body[data-dsh-claude-style] .dsh-claude-popover-item-badge {
   margin-left: auto !important;
