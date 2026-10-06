@@ -8,10 +8,6 @@
 
 [![English](https://img.shields.io/badge/lang-English-blue.svg)](README.en.md) [![简体中文](https://img.shields.io/badge/lang-%E7%AE%80%E4%BD%93%E4%B8%AD%E6%96%87-red.svg)](README.md)
 
-[![version](https://img.shields.io/npm/v/dsh-claude-style?style=flat&label=version&color=D97757)](https://www.npmjs.com/package/dsh-claude-style)
-[![downloads](https://img.shields.io/npm/dm/dsh-claude-style?style=flat&label=downloads&color=D97757)](https://www.npmjs.com/package/dsh-claude-style)
-[![GitHub stars](https://img.shields.io/github/stars/Nwflower/dsh-claude-style?style=flat&label=%E2%98%85&color=08C)](https://github.com/Nwflower/dsh-claude-style)
-[![dsh.so install](https://www.dsh.so/badge/install/dsh-claude-style.svg)](https://www.dsh.so/artifact/dsh-claude-style/)
 [![license](https://img.shields.io/badge/license-MIT-2EA44F?style=flat)](LICENSE)
 
 </div>
@@ -115,11 +111,11 @@ Every feature that takes over part of the host's interface has its own switch; t
 
 | Font | Used for | File |
 |---|---|---|
-| Anthropic Sans Web Text | Interface / UI | [`fonts/AnthropicSansWebText.ttf`](https://github.com/Nwflower/dsh-claude-style/raw/main/fonts/AnthropicSansWebText.ttf) |
-| Anthropic Serif Web Text | Conversation body / Markdown | [`fonts/AnthropicSerifWebText.ttf`](https://github.com/Nwflower/dsh-claude-style/raw/main/fonts/AnthropicSerifWebText.ttf) |
-| JetBrains Mono Variable | Code / code blocks | [`fonts/JetBrainsMonoVariable.ttf`](https://github.com/Nwflower/dsh-claude-style/raw/main/fonts/JetBrainsMonoVariable.ttf), [`fonts/JetBrainsMonoItalicVariable.ttf`](https://github.com/Nwflower/dsh-claude-style/raw/main/fonts/JetBrainsMonoItalicVariable.ttf) |
-| Inter | Interface when Anthropic Sans is absent | [`fonts/InterVariable.woff2`](https://github.com/Nwflower/dsh-claude-style/raw/main/fonts/InterVariable.woff2) |
-| Noto Serif | Conversation body when Anthropic Serif is absent | [`fonts/NotoSerifVariable.woff2`](https://github.com/Nwflower/dsh-claude-style/raw/main/fonts/NotoSerifVariable.woff2) |
+| Anthropic Sans Web Text | Interface / UI | [`fonts/AnthropicSansWebText.ttf`](https://github.com/zazzzzzzz/dsh-claude-style-painting/raw/main/fonts/AnthropicSansWebText.ttf) |
+| Anthropic Serif Web Text | Conversation body / Markdown | [`fonts/AnthropicSerifWebText.ttf`](https://github.com/zazzzzzzz/dsh-claude-style-painting/raw/main/fonts/AnthropicSerifWebText.ttf) |
+| JetBrains Mono Variable | Code / code blocks | [`fonts/JetBrainsMonoVariable.ttf`](https://github.com/zazzzzzzz/dsh-claude-style-painting/raw/main/fonts/JetBrainsMonoVariable.ttf), [`fonts/JetBrainsMonoItalicVariable.ttf`](https://github.com/zazzzzzzz/dsh-claude-style-painting/raw/main/fonts/JetBrainsMonoItalicVariable.ttf) |
+| Inter | Interface when Anthropic Sans is absent | [`fonts/InterVariable.woff2`](https://github.com/zazzzzzzz/dsh-claude-style-painting/raw/main/fonts/InterVariable.woff2) |
+| Noto Serif | Conversation body when Anthropic Serif is absent | [`fonts/NotoSerifVariable.woff2`](https://github.com/zazzzzzzz/dsh-claude-style-painting/raw/main/fonts/NotoSerifVariable.woff2) |
 
 JetBrains Mono, Inter and Noto Serif are licensed under the SIL Open Font License 1.1 and ship with the npm package; nothing to set up. Inter and Noto Serif nearly match the two Anthropic fonts in letter height and width, so without the Anthropic fonts they stand in and the interface and conversation text keep their layout. Both carry only the Latin characters the Anthropic fonts cover; Chinese text keeps using the system's Chinese fonts.
 
@@ -133,20 +129,13 @@ To enable the Anthropic fonts, choose one of the following:
 
 ## Installation
 
-1. From the official plugin page, add the plugin below and it installs.
-
-```
-dsh-claude-style
-```
-
-2. From a terminal:
+From a terminal, install this repository's source:
 
 ```bash
-dsh plugin --profile web add dsh-claude-style                  # npm package (recommended)
-dsh plugin --profile web add Nwflower/dsh-claude-style         # GitHub source
+dsh plugin --profile web add zazzzzzzz/dsh-claude-style-painting   # GitHub source
 ```
 
-3. From the [plugin market](https://github.com/dsh-market/dsh-market)
+It is also listed on the [plugin market](https://github.com/dsh-market/dsh-market).
 
 Keep only one theme enabled at a time. dsh ≥ 0.1.7 is required, and a restart of DeepSeek Harness brings the full feature set.
 
@@ -171,6 +160,3 @@ The pixel crab (Clawd) is a character of Anthropic, and all rights in it remain 
 
 > Want to import your Claude Code / Codex session history into DSH and keep the conversation going? Try the author's other plugin, [dsh-chat-import](https://github.com/Nwflower/dsh-chat-import).
 
-## Star History
-
-[![Star History Chart](https://api.star-history.com/svg?repos=Nwflower/dsh-claude-style&type=Date)](https://star-history.com/#Nwflower/dsh-claude-style&Date)
